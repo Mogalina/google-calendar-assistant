@@ -1,0 +1,63 @@
+name: Require All Collaborators to Approve
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, review_requested, edited, ready_for_review]
+
+jobs:
+  check-approvals:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Check PR approvals
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo, number } = context.issue;
+            const prAuthor = context.payload.pull_request.user.login;
+
+            console.log(`Checking approvals for PR #${number} in ${owner}/${repo}...`);
+
+            let collaborators = [];
+            try {
+              const { data } = await github.rest.repos.listCollaborators({
+                owner,
+                repo,
+                affiliation: "direct",
+              });
+              collaborators = data.map(c => c.login);
+            } catch (err) {
+              console.warn("Could not list repo collaborators:", err.message);
+            }
+
+            try {
+              const { data: orgMembers } = await github.rest.orgs.listMembers({ org: owner });
+              orgMembers.forEach(m => {
+                if (!collaborators.includes(m.login)) collaborators.push(m.login);
+              });
+            } catch (err) {
+              console.log("Not an org repo or insufficient permissions to fetch org members:", err.message);
+            }
+
+            const requiredApprovers = collaborators.filter(login => login !== prAuthor);
+            console.log("Required approvers:", requiredApprovers);
+
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner,
+              repo,
+              pull_number: number,
+            });
+
+            const approved = new Set(
+              reviews.filter(r => r.state === "APPROVED").map(r => r.user.login)
+            );
+
+            const missingApprovals = requiredApprovers.filter(login => !approved.has(login));
+
+            if (missingApprovals.length > 0) {
+              core.setFailed(`Missing approvals from: ${missingApprovals.join(", ")}`);
+            } else {
+              console.log("All collaborators (except the author) have approved this PR.");
+            }
