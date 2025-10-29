@@ -1,0 +1,92 @@
+# Core
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build & distribution
+dist/
+build/
+out/
+.bundle/
+.temp/
+coverage/
+.DS_Store
+
+# Chrome extension build artifacts
+*.zip
+*.crx
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+*.ipr
+*.iws
+
+# Secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+client_secret*.json
+service-account.json
+auth_token.json
+
+# Logs
+*.log
+logs/
+cache/
+tmp/
+temp/
+__pycache__/
+
+# Docker
+Dockerfile~
+docker-compose.override.yml
+docker-compose.local.yml
+.docker/
+
+# Test artifacts
+coverage/
+.junit/
+test-results/
+cypress/videos/
+cypress/screenshots/
+
+# Package managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Icon?
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Build
+.cache/
+.parcel-cache/
+vite.config.ts
+vite.config.js
+webpack.config.js
+
+# Miscellaneous
+*.bak
+*.tmp
+*.old
