@@ -10,8 +10,11 @@ COPY package*.json ./
 # Omit development dependencies
 RUN npm install --omit=dev
 
-# Copy application code
-COPY src ./src
+# Copy backend source code
+COPY backend/src ./src
+
+# Copy environment files
+COPY backend/.env* ./
 
 # === Run final minimal image ===
 FROM node:18-alpine
@@ -20,7 +23,9 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy built app and dependencies from builder stage
-COPY --from=build /app /app
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/src ./src
+COPY --from=build /app/.env* ./
 
 # Set environment variables
 ENV NODE_ENV=production
