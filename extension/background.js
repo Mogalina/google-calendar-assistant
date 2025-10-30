@@ -7,6 +7,9 @@ chrome.runtime.onMessage.addListener(
             
             //Logica GCA-71: Definim URL-ul catre API-ul Node.js
             // Folosim http://localhost:8080 pentru a testa in mediul de dezvoltare
+            //v1 este prima versiune in caz ca facem altelke pe viitor
+            //process-command: calea catre functia de apelat 
+            //endpoint ul este responsabil cu preluarea unei comenzi text si cu procesarea ei (trimiterea catre Gemini)
             const API_ENDPOINT = 'http://localhost:8080/api/v1/process-command'; 
             
             // Definim datele pe care le trimitem catre backend
@@ -25,7 +28,7 @@ chrome.runtime.onMessage.addListener(
             .then(response => response.json())
             .then(data => {
                 console.log('Background Script: Raspuns de la Backend:', data);
-                // 3. Trimitem rezultatul de la backend inapoi catre Content Script
+                //Trimitem rezultatul de la backend inapoi catre Content Script
                 sendResponse({ 
                     status: "processed", 
                     result: data.calendarEvent || "N/A"
