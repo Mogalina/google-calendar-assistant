@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener(
         
         if (request.action === "GCA_PROCESS_INPUT") {
             
-            // 1. Logica GCA-71: Definim URL-ul catre API-ul Node.js
+            //Logica GCA-71: Definim URL-ul catre API-ul Node.js
             // Folosim http://localhost:8080 pentru a testa in mediul de dezvoltare
             const API_ENDPOINT = 'http://localhost:8080/api/v1/process-command'; 
             
@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener(
                 command: request.data // textul primit de la content script
             };
 
-            // 2. Facem apelul asincron catre Backend API
+            // Facem apelul asincron catre Backend API
             fetch(API_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -39,7 +39,6 @@ chrome.runtime.onMessage.addListener(
                 });
             });
             
-            // !!! Este obligatoriu să returnezi true când folosești fetch/promisiuni !!!
             return true; 
         }
     }
