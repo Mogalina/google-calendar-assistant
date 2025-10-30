@@ -1,25 +1,45 @@
-
-// Asculta mesajele trimise de Content Scripts
+// background.js
 
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         
-        // Verificam actiunea noastra
         if (request.action === "GCA_PROCESS_INPUT") {
             
-            console.log("Background Script: Mesaj primit din tab-ul:", sender.tab.url);
-            console.log("Background Script: Datele primite:", request.data);
+            // 1. Logica GCA-71: Definim URL-ul catre API-ul Node.js
+            // Folosim http://localhost:8080 pentru a testa in mediul de dezvoltare
+            const API_ENDPOINT = 'http://localhost:8080/api/v1/process-command'; 
             
-            // Logica GCA-71: De adaugat apelul catre API-ul Node.js din backend
-            // Momentan doar log in si trimitere confirmare
-            
-            // Trimitem raspunsul inapoi catre Content Script
-            sendResponse({ 
-                status: "received", 
-                message: "Mesaj primit si in curs de procesare." 
+            // Definim datele pe care le trimitem catre backend
+            const payload = {
+                command: request.data // textul primit de la content script
+            };
+
+            // 2. Facem apelul asincron catre Backend API
+            fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Background Script: Raspuns de la Backend:', data);
+                // 3. Trimitem rezultatul de la backend inapoi catre Content Script
+                sendResponse({ 
+                    status: "processed", 
+                    result: data.calendarEvent || "N/A"
+                });
+            })
+            .catch(error => {
+                console.error('Background Script: Eroare la apelul Backend:', error);
+                sendResponse({ 
+                    status: "error", 
+                    message: "A apărut o eroare la procesarea comenzii." 
+                });
             });
             
-            // Returnam true pentru a pastra portul deschis pentru sendResponse asincron
+            // !!! Este obligatoriu să returnezi true când folosești fetch/promisiuni !!!
             return true; 
         }
     }
