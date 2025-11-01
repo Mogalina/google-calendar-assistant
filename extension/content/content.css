@@ -21,7 +21,8 @@
 }
 
 .gca-fab:hover { filter: brightness(1.05); }
+.gca-fab { transition: transform .15s ease; }
+.gca-fab[aria-pressed="true"] { transform: rotate(45deg); }
 
-@media (prefers-color-scheme: dark) {
-  .gca-fab { background: #8ab4f8; color: #202124; }
-}
+
+

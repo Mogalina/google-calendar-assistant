@@ -23,14 +23,34 @@
   const fab = document.createElement('button');
   fab.className = 'gca-fab';
   fab.textContent = '＋';
-  fab.title = 'Open Assistant';
-  fab.setAttribute('aria-label', 'Open Assistant');
+  fab.title = 'Open panel';
+  fab.setAttribute('aria-label', 'Open chat panel');
+  fab.setAttribute('aria-pressed', 'false');
 
   root.appendChild(fab);
 
+  let isOpen = false;
+
+  function emit(type) {
+    window.dispatchEvent(new CustomEvent(type, { detail: { source: 'fab' } }));
+    window.postMessage({ type: `GCA_${type.replace(':','_').toUpperCase()}`, source: 'fab' }, '*');
+  }
+
+  function setOpen(v) {
+    if (isOpen === v) return;
+    isOpen = v;
+    fab.setAttribute('aria-pressed', String(isOpen));
+    fab.title = isOpen ? 'Close chat panel' : 'Open chat panel';
+    emit(isOpen ? 'GCA:open' : 'GCA:close');
+  }
   
-  fab.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('GCA:fab-click'));
-    window.postMessage({ type: 'GCA_FAB_CLICK' }, '*');
-  });
+  function toggle() {
+    emit('GCA:toggle');   // panelul va asculta asta
+    setOpen(!isOpen);
+  }
+  
+  fab.addEventListener('click', toggle);
+
+  
+  
 })();
