@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -14,6 +15,10 @@
     "node-fetch": "^2.6.7",
     "googleapis": "^121.0.0",
     "@google-cloud/secret-manager": "^4.1.0"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.2"
   },
   "keywords": [
     "google-calendar",
