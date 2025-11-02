@@ -1,23 +1,15 @@
-// background.js
-
+import { BASE_URL, API_VERSION, PROCESS_COMMAND_PATH } from './apiConfig.js';
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
         
         if (request.action === "GCA_PROCESS_INPUT") {
+            //v1 :version 1
+            const API_ENDPOINT = BASE_URL+API_VERSION+PROCESS_COMMAND_PATH
             
-            //Logica GCA-71: Definim URL-ul catre API-ul Node.js
-            // Folosim http://localhost:8080 pentru a testa in mediul de dezvoltare
-            //v1 este prima versiune in caz ca facem altelke pe viitor
-            //process-command: calea catre functia de apelat 
-            //endpoint ul este responsabil cu preluarea unei comenzi text si cu procesarea ei (trimiterea catre Gemini)
-            const API_ENDPOINT = 'http://localhost:8080/api/v1/process-command'; 
-            
-            // Definim datele pe care le trimitem catre backend
             const payload = {
-                command: request.data // textul primit de la content script
+                command: request.data 
             };
 
-            // Facem apelul asincron catre Backend API
             fetch(API_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -27,18 +19,17 @@ chrome.runtime.onMessage.addListener(
             })
             .then(response => response.json())
             .then(data => {
-                console.log('Background Script: Raspuns de la Backend:', data);
-                //Trimitem rezultatul de la backend inapoi catre Content Script
+                console.log('Background Script: Answer from Backend:', data);
                 sendResponse({ 
                     status: "processed", 
                     result: data.calendarEvent || "N/A"
                 });
             })
             .catch(error => {
-                console.error('Background Script: Eroare la apelul Backend:', error);
+                console.error('Background Script: Erorr when calling Backend:', error);
                 sendResponse({ 
                     status: "error", 
-                    message: "A apărut o eroare la procesarea comenzii." 
+                    message: "An error occurred when processing the command" 
                 });
             });
             

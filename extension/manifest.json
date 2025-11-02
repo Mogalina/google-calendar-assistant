@@ -3,12 +3,13 @@
   "name": "Google Calendar Assistant",
   "version": "1.0",
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js" ,
+    "type":"module"
   },
   "content_scripts": [
     {
       "matches": ["https://calendar.google.com/*"], 
-      "js": ["content.js"]
+      "js": ["scripts/content.js"]
     }
   ],
   "permissions": ["activeTab", "scripting"]
