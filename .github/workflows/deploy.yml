@@ -54,4 +54,5 @@ jobs:
 
       - name: Push Docker image
         working-directory: backend
+
         run: docker push $DOCKER_IMAGE
