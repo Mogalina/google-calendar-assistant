@@ -1,15 +1,11 @@
 import { BASE_URL, API_VERSION, PROCESS_COMMAND_PATH } from './apiConfig.js';
 chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
-        
+    function(request, sender, sendResponse) {        
         if (request.action === "GCA_PROCESS_INPUT") {
-            //v1 :version 1
             const API_ENDPOINT = BASE_URL+API_VERSION+PROCESS_COMMAND_PATH
-            
             const payload = {
                 command: request.data 
             };
-
             fetch(API_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -32,7 +28,6 @@ chrome.runtime.onMessage.addListener(
                     message: "An error occurred when processing the command" 
                 });
             });
-            
             return true; 
         }
     }

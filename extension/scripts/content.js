@@ -1,12 +1,9 @@
 function sendInputToBackground(textInput) {
-    
     const message = {
         action: "GCA_PROCESS_INPUT", 
         data: textInput 
     };
-
     console.log("Content Script: Sending message:", message);
-
     chrome.runtime.sendMessage(message, (response) => {
         if (response && response.status === "received") {
             console.log("Content Script: Confirmation received from Background.");
@@ -14,7 +11,6 @@ function sendInputToBackground(textInput) {
     });
 }
 window.addEventListener('load', () => {
-    // we will attach sendInputToBackground to an event(click buton, input, etc.)
     if (window.self !== window.top) {
         return; 
     }
