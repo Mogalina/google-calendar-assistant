@@ -13,16 +13,12 @@ function sendInputToBackground(textInput) {
         }
     });
 }
-
 window.addEventListener('load', () => {
     // we will attach sendInputToBackground to an event(click buton, input, etc.)
-
     if (window.self !== window.top) {
         return; 
     }
-
     console.log("Content Script fully loaded.");
-    
     const testCommand = "Create an event tomorrow at 3 PM for the GCA meeting.";
     sendInputToBackground(testCommand);
 });
