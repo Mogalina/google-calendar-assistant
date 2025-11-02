@@ -1,6 +1,5 @@
 import { BASE_URL, API_VERSION, PROCESS_COMMAND_PATH } from './apiConfig.js';
-chrome.runtime.onMessage.addListener(
-  function(request, sender, sendResponse) {        
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {        
     if (request.action === "GCA_PROCESS_INPUT") {
       const API_ENDPOINT = BASE_URL+API_VERSION+PROCESS_COMMAND_PATH
       const payload = {
