@@ -5,6 +5,11 @@ on:
     branches: [ main ]
   pull_request:
 
+permissions:
+  contents: read     
+  packages: write
+  id-token: write
+
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
