@@ -171,4 +171,72 @@ router.put("/events/:eventId", async (req, res) => {
   }
 });
 
+router.delete("/events/:eventId", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const [, accessToken] = authHeader.split("Bearer ");
+    if (!accessToken) {
+      return sendError(
+        res,
+        401,
+        "Missing or invalid Authorization header. Expected: Bearer <ACCESS_TOKEN>."
+      );
+    }
+
+    const { eventId } = req.params || {};
+    if (!eventId) {
+      return sendError(res, 400, 'Param "eventId" is required.');
+    }
+
+    const { calendarId = "primary", sendUpdates = "all" } = req.body || {};
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    await calendar.events.delete({
+      calendarId,
+      eventId,
+      sendUpdates,
+    });
+
+    return res.status(204).end();
+  } catch (err) {
+    const status = err?.code || err?.response?.status || err?.status || 500;
+
+    const message =
+      err?.response?.data?.error?.message ||
+      err?.message ||
+      "Calendar API error";
+
+    if (status === 401) {
+      return sendError(
+        res,
+        401,
+        "Unauthorized — invalid/expired access token or insufficient scopes.",
+        { raw: message }
+      );
+    }
+    if (status === 403) {
+      return sendError(
+        res,
+        403,
+        "Forbidden — insufficient permissions for this calendar or rate limit.",
+        { raw: message }
+      );
+    }
+    if (status === 404) {
+      return sendError(
+        res,
+        404,
+        "Not Found — invalid calendarId or eventId.",
+        { raw: message }
+      );
+    }
+    return sendError(res, 500, "Internal error while deleting event.", {
+      raw: message,
+    });
+  }
+});
+
 export default router;
