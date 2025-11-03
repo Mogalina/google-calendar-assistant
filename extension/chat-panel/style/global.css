@@ -1,0 +1,48 @@
+:root {
+  /* Primary Colors */
+  --primary-gradient-start: #394680;
+  --primary-gradient-end: #1a1f4d;
+  --primary-purple-start: #667eea;
+  --primary-purple-end: #764ba2;
+  --primary-google-blue: #4285f4;
+  --primary-google-calendar-blue: #1967d2;
+
+  /* Background Colors */
+  --bg-white: #ffffff;
+  --bg-light-gray: #f9fafb;
+  --bg-hover-gray: #f1f3f4;
+  --bg-active-gray: #e5e7eb;
+  --bg-hover-purple: #eef2ff;
+
+  /* Text Colors */
+  --text-primary: #1e1e1e;
+  --text-secondary: #3c3c3c;
+  --text-tertiary: #3f3f3f;
+  --text-muted: #6f6f6f;
+  --text-light: #818181;
+  --text-lighter: #9ca3af;
+  --text-dark: #1f1f1f;
+  --text-user-avatar: #374151;
+
+  /* Border Colors */
+  --border-light: #e5e7eb;
+  --border-medium: #d1d5db;
+
+  /* Shadow Colors */
+  --shadow-dark: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+  --shadow-light: rgba(0, 0, 1, 0.155);
+  --shadow-tooltip: rgba(0, 0, 0, 0.1);
+
+  /* Special Colors */
+  --recording-bg: #555555;
+  --white: white;
+}
+
+@font-face {
+  font-family: "Readex Pro";
+  src: url("../assests/font/Readex_Pro/ReadexPro-VariableFont_HEXP\,wght.ttf")
+    format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
