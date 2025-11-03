@@ -8,7 +8,6 @@ const chatForm = document.getElementById("chat-form");
 
 // Grab microphone button and its icon
 const micButton = document.getElementById("mic-button");
-const micIcon = micButton.querySelector(".mic-button-icon");
 
 // Grab dropdown elements
 const dropdown = document.getElementById("mode-dropdown");
@@ -16,6 +15,10 @@ const modeBtn = document.getElementById("mode-btn");
 const menuButtons = dropdown.querySelectorAll(".dropdown-menu button");
 const dropdownMenu = document.getElementById("drawer-menu");
 const modeOptions = dropdownMenu.querySelectorAll("[data-mode]");
+
+const actionButton = document.getElementById("action-button");
+const actionIcon = document.getElementById("action-icon");
+const tooltipText = document.getElementById("tooltip-text");
 
 // Set initial time in the chat
 document.getElementById("initial-time").textContent = new Date().toLocaleTimeString();
@@ -82,17 +85,25 @@ modeOptions.forEach((option) => {
   });
 });
 
-// Listen for input in the textarea
+let isSendMode = false;
+
+// Detect input changes
 chatInput.addEventListener("input", () => {
-  if (chatInput.value.trim().length > 0) {
-    // Disable microphone button and change icon if there is text
-    micButton.classList.add("disabled");
-    // micButton.disabled = true;
-    // micIcon.src = "./assests/images/microphone-off-icon.png";
-  } else {
-    // Re-enable microphone button and restore original icon if input is empty
-    micButton.classList.remove("disabled");
-    micButton.disabled = false;
-    micIcon.src = "./assests/images/microphone-icon.png";
+  const hasText = chatInput.value.trim().length > 0;
+
+  if (hasText && !isSendMode) {
+    // Switch to send mode
+    isSendMode = true;
+    actionIcon.src = "./assests/images/arrow-up-icon.png";
+    tooltipText.textContent = "Send";
+    actionIcon.classList.remove("mic");
+    actionIcon.classList.add("send");
+  } else if (!hasText && isSendMode) {
+    // Switch back to mic mode
+    isSendMode = false;
+    actionIcon.src = "./assests/images/microphone-icon.png";
+    tooltipText.textContent = "Dictate";
+    actionIcon.classList.remove("send");
+    actionIcon.classList.add("mic");
   }
 });

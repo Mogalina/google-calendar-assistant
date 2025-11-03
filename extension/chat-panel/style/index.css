@@ -17,12 +17,10 @@
   align-items: center;
   justify-content: flex-end;
   margin: 0;
-  min-width: 400px;
-  min-height: 400px;
 }
 
 .chat-container {
-  width: 100vh;
+  width: 500px;
   height: 100vh;
   background: var(--bg-white);
   box-shadow: 0 20px 60px var(--shadow-dark);
@@ -291,7 +289,7 @@
 }
 
 .chat-textarea {
-  width: 100%;
+  width: 90%;
   min-height: 38px;
   max-height: 120px;
   border: 0px;
@@ -313,10 +311,64 @@
   color: var(--text-light);
 }
 
-/* Base button styles */
-.clear-chat-button,
-.send-button,
-.mic-button {
+/* Scrollbar styling */
+.chat-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+
+/* Unified mic/send button */
+.action-button {
+  position: absolute;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  background-color: transparent;
+  border: none;
+  border-radius: 27px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    opacity 0.25s ease;
+}
+
+/* Hover effect */
+.action-button:hover {
+  background-color: var(--bg-hover-gray);
+}
+
+/* Active press effect */
+.action-button:active {
+  background-color: var(--bg-active-gray);
+}
+
+/* Icon */
+.action-button-icon {
+  width: 50%;
+  height: 50%;
+}
+
+.action-button-icon.mic {
+  width: 50%;
+  height: 50%;
+}
+
+.action-button-icon.send {
+  width: 100%;
+  height: 100%;
+}
+
+.clear-chat-button {
   background-color: transparent;
   border: none;
   border-radius: 27px;
@@ -327,59 +379,37 @@
   flex-shrink: 0;
 }
 
-.clear-chat-button,
-.send-button {
+.clear-chat-button {
   transition: background-color 0.2s ease, transform 0.15s ease,
     opacity 0.25s ease;
 }
 
 /* Hover effects for all buttons */
-.clear-chat-button:hover,
-.send-button:hover,
-.mic-button:hover {
+.clear-chat-button:hover {
   background-color: var(--bg-hover-gray);
 }
 
-.clear-chat-button:active,
-.send-button:active,
-.mic-button:active {
+.clear-chat-button:active {
   background-color: var(--bg-active-gray);
 }
 
 /* Clear chat button */
 .clear-chat-button {
-  width: 35px;
-  height: 35px;
-}
-
-/* Send and mic buttons (positioned absolutely) */
-.send-button,
-.mic-button {
-  position: absolute;
-  width: 35px;
-  height: 35px;
+  width: 38px;
+  height: 38px;
 }
 
 /* Button icons */
-.bin-button-icon,
-.mic-button-icon {
+.bin-button-icon {
   width: 50%;
   height: 50%;
 }
 
-.send-button-icon {
-  width: 90%;
-  height: 90%;
-}
-
 /* Disabled states */
-.send-button:disabled {
+.send-button:disabled,
+.mic-button.disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.mic-button.disabled {
-  opacity: 0;
 }
 
 /* Mic recording state */
@@ -388,6 +418,20 @@
   animation: pulse 1.5s infinite;
 }
 
+/* Input active state transitions */
+.input-active .mic-button {
+  opacity: 1;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+.input-active .send-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+/* ==================== TOOLTIPS ================================================================ */
 .tooltip {
   position: relative;
   display: inline-flex;
