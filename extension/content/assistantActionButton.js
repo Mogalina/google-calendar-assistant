@@ -1,37 +1,58 @@
 (function initAssistantButton(){
-  if (window.__gcaFabInjected) return;
-  window.__gcaFabInjected = true;
+  if (window.__gcaButtonInjected) return;
+  window.__gcaButtonInjected = true;
 
-  console.log("GCA FAB loaded");
+  console.log("GCA assistant button loaded");
   
   const host = document.createElement('div');
   const shadow = host.attachShadow({ mode: 'open' });
   document.documentElement.appendChild(host);
   
-  const linkVars = document.createElement('link');
-  linkVars.rel = 'stylesheet';
-  linkVars.href = chrome.runtime.getURL('content/colors.css');
-  shadow.appendChild(linkVars);
+  const colorsLink = document.createElement('link');
+  colorsLink.rel = 'stylesheet';
+  colorsLink.href = chrome.runtime.getURL('content/colors.css');
+  shadow.appendChild(colorsLink);
   
-  const linkStyles = document.createElement('link');
-  linkStyles.rel = 'stylesheet';
-  linkStyles.href = chrome.runtime.getURL('content/assistantActionButton.css');
-  shadow.appendChild(linkStyles);
+  const styleLink = document.createElement('link');
+  styleLink.rel = 'stylesheet';
+  styleLink.href = chrome.runtime.getURL('content/assistantActionButton.css');
+  shadow.appendChild(styleLink);
   
-  const root = document.createElement('div');
-  root.className = 'gca-root';
-  shadow.appendChild(root);
+  const rootContainer = document.createElement('div');
+  rootContainer.className = 'gca-root';
+  shadow.appendChild(rootContainer);
 
-  const fab = document.createElement('button');
-  fab.className = 'gca-fab';
-  fab.textContent = '＋';
-  fab.title = 'Open Assistant';
-  fab.setAttribute('aria-label', 'Open Assistant');
+  const floatingActionButton = document.createElement('button');
+  floatingActionButton.className = 'gca-fab';
+  floatingActionButton.textContent = '＋';
+  floatingActionButton.title = 'Open Assistant';
+  floatingActionButton.setAttribute('aria-label', 'Open Assistant');
+  floatingActionButton.setAttribute('aria-pressed', 'false');
+  rootContainer.appendChild(floatingActionButton);
 
-  root.appendChild(fab);
+  let isOpen = false;
 
-  fab.addEventListener('click', () => {
-    window.dispatchEvent(new CustomEvent('GCA:fab-click'));
-    window.postMessage({ type: 'GCA_FAB_CLICK' }, '*');
-  });
+  function emit(type) {
+    const eventDetail = { detail: { source: 'assistant-button' } };
+    const messageType = `GCA_${type.replace(':', '_').toUpperCase()}`;
+    const messageData = { type: messageType, source: 'assistant-button' };
+    window.dispatchEvent(new CustomEvent(type, eventDetail));
+    window.postMessage(messageData, '*');
+  }
+  function setOpen(value) {
+    if (isOpen === value) return;
+    isOpen = value;
+    floatingActionButton.setAttribute('aria-pressed', String(isOpen));
+    floatingActionButton.title = isOpen ? 'Close chat panel' : 'Open chat panel';
+    emit(isOpen ? 'GCA:open' : 'GCA:close');
+  }
+  
+  function toggle() {
+    emit('GCA:toggle'); 
+    setOpen(!isOpen);
+    window.dispatchEvent(new CustomEvent('GCA:button-click'));
+    window.postMessage({ type: 'GCA_BUTTON_CLICK' }, '*');
+  }
+
+  floatingActionButton.addEventListener('click', toggle);
 })();

@@ -20,8 +20,18 @@
   color: var(--assistant-button-foreground);
   font-size: 28px;
   line-height: 1;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
 .gca-fab:hover { 
   filter: brightness(1.05); 
+}
+
+.gca-fab[aria-pressed="true"] {
+  transform: rotate(45deg);
+}
+
+.gca-fab:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
