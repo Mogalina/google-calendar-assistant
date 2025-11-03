@@ -8,116 +8,121 @@
   </head>
 
   <body>
-    <div class="chat-container">
-      <div class="chat-header">
-        <div class="chat-icon-container">
-          <img class="chat-icon" src="./assests/images/gemini-logo.png" />
+    <div class="panel-container">
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="chat-icon-container">
+            <img class="chat-icon" src="./assests/images/gemini-logo.png" />
+          </div>
+          <div class="chat-title">
+            <p>Google Calendar Assistant</p>
+          </div>
         </div>
-        <div class="chat-title">
-          <p>Google Calendar Assistant</p>
-        </div>
-      </div>
 
-      <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-messages" id="chat-messages"></div>
 
-      <div class="chat-input-area">
-        <form class="input-form" id="chat-form">
-          <button
-            type="button"
-            class="clear-chat-button tooltip"
-            id="clear-chat-button"
-          >
-            <img class="bin-button-icon" src="./assests/images/bin-icon.png" />
-            <span class="tooltip-text">Clear Chat</span>
-          </button>
-          <div class="dropdown" id="mode-dropdown">
-            <button type="button" class="dropdown-btn tooltip" id="mode-btn">
+        <div class="chat-input-area">
+          <form class="input-form" id="chat-form">
+            <button
+              type="button"
+              class="clear-chat-button tooltip"
+              id="clear-chat-button"
+            >
               <img
-                class="dropdown-btn-icon"
-                src="./assests/images/plus-icon.png"
+                class="bin-button-icon"
+                src="./assests/images/bin-icon.png"
               />
-              <span class="tooltip-text">Select Instrument</span>
+              <span class="tooltip-text">Clear Chat</span>
             </button>
-
-            <div class="dropdown-menu" id="drawer-menu">
-              <h3 class="dropdown-title">Choose an instrument</h3>
-              <button type="button" data-mode="SmartAdd" class="drawer-option">
-                <div class="drawer-icon">
-                  <img
-                    class="drawer-icon-image"
-                    src="./assests/images/brain-icon.png"
-                  />
-                </div>
-                <div class="drawer-text">
-                  <h3>Smart add</h3>
-                  <p>Quickly create events using natural language.</p>
-                </div>
+            <div class="dropdown" id="mode-dropdown">
+              <button type="button" class="dropdown-btn tooltip" id="mode-btn">
+                <img
+                  class="dropdown-btn-icon"
+                  src="./assests/images/plus-icon.png"
+                />
+                <span class="tooltip-text">Select Instrument</span>
               </button>
 
-              <button
-                type="button"
-                data-mode="Suggestion"
-                class="drawer-option"
-              >
-                <div class="drawer-icon">
-                  <img
-                    class="drawer-icon-image"
-                    src="./assests/images/light-bulb-icon.png"
-                  />
-                </div>
-                <div class="drawer-text">
-                  <h3>Suggestion</h3>
-                  <p>Get event ideas or optimize your schedule.</p>
-                </div>
-              </button>
+              <div class="dropdown-menu" id="drawer-menu">
+                <h3 class="dropdown-title">Choose an instrument</h3>
+                <button
+                  type="button"
+                  data-mode="SmartAdd"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="./assests/images/brain-icon.png"
+                    />
+                  </div>
+                  <div class="drawer-text">
+                    <h3>Smart add</h3>
+                    <p>Quickly create events using natural language.</p>
+                  </div>
+                </button>
 
-              <button
-                type="button"
-                data-mode="Reschedule"
-                class="drawer-option"
-              >
-                <div class="drawer-icon">
-                  <img
-                    class="drawer-icon-image"
-                    src="./assests/images/calendar-plus-icon.png"
-                  />
-                </div>
-                <div class="drawer-text">
-                  <h3>Reschedule</h3>
-                  <p>Find new times for your existing events.</p>
-                </div>
-              </button>
+                <button
+                  type="button"
+                  data-mode="Suggestion"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="./assests/images/light-bulb-icon.png"
+                    />
+                  </div>
+                  <div class="drawer-text">
+                    <h3>Suggestion</h3>
+                    <p>Get event ideas or optimize your schedule.</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  data-mode="Reschedule"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="./assests/images/calendar-plus-icon.png"
+                    />
+                  </div>
+                  <div class="drawer-text">
+                    <h3>Reschedule</h3>
+                    <p>Find new times for your existing events.</p>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="input-wrapper">
-            <textarea
-              class="chat-textarea"
-              id="chat-input"
-              placeholder="Ask me anything"
-              rows="1"
-            ></textarea>
-          </div>
+            <div class="input-wrapper">
+              <textarea
+                class="chat-textarea"
+                id="chat-input"
+                placeholder="Ask me anything"
+                rows="1"
+              ></textarea>
+            </div>
 
-          <button type="button" class="mic-button tooltip" id="mic-button">
-            <img
-              class="mic-button-icon"
-              src="./assests/images/microphone-icon.png"
-            />
-            <span class="tooltip-text">Dictate</span>
-          </button>
-
-          <button type="submit" class="send-button tooltip" id="send-button">
-            <img
-              class="send-button-icon"
-              src="./assests/images/sent-icon.png"
-            />
-            <span class="tooltip-text">Send</span>
-          </button>
-        </form>
+            <button
+              type="button"
+              class="action-button tooltip"
+              id="action-button"
+            >
+              <img
+                class="action-button-icon"
+                src="./assests/images/microphone-icon.png"
+                id="action-icon"
+              />
+              <span class="tooltip-text" id="tooltip-text">Dictate</span>
+            </button>
+          </form>
+        </div>
       </div>
     </div>
-
     <script src="./script/app.js"></script>
   </body>
 </html>

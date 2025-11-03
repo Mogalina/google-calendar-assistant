@@ -11,14 +11,14 @@
   --primary-gradient-end: #1a1f4d;
   --primary-purple-start: #667eea;
   --primary-purple-end: #764ba2;
-  
+
   /* Background Colors */
   --bg-white: #ffffff;
   --bg-light-gray: #f9fafb;
   --bg-hover-gray: #f1f3f4;
   --bg-active-gray: #e5e7eb;
   --bg-hover-purple: #eef2ff;
-  
+
   /* Text Colors */
   --text-primary: #1e1e1e;
   --text-secondary: #3c3c3c;
@@ -28,17 +28,17 @@
   --text-lighter: #9ca3af;
   --text-dark: #1f1f1f;
   --text-user-avatar: #374151;
-  
+
   /* Border Colors */
   --border-light: #e5e7eb;
   --border-medium: #d1d5db;
-  
+
   /* Shadow Colors */
   --shadow-dark: rgba(0, 0, 0, 0.3);
   --shadow-medium: rgba(0, 0, 0, 0.15);
   --shadow-light: rgba(0, 0, 1, 0.155);
   --shadow-tooltip: rgba(0, 0, 0, 0.1);
-  
+
   /* Special Colors */
   --recording-bg: #555555;
   --white: white;
@@ -54,31 +54,26 @@
 }
 
 /* ==================== BODY & LAYOUT ==================== */
-html, body {
-  min-width: 400px; 
-  min-height: 400px;
-}
-
-body {
+.panel-container {
   font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(135deg, var(--primary-gradient-start) 0%, 
-    var(--primary-gradient-end) 100%);
-  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    var(--primary-gradient-start) 0%,
+    var(--primary-gradient-end) 100%
+  );
   display: flex;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-end;
+  margin: 0;
 }
 
 /* ==================== CHAT CONTAINER ========================================================== */
 .chat-container {
-  width: 100%;
-  min-width: 100px;
-  max-width: 1200px; 
-  height: 90vh;
+  width: 500px;
+  height: 100vh;
   background: var(--bg-white);
-  border-radius: 50px;
   box-shadow: 0 20px 60px var(--shadow-dark);
   display: flex;
   flex-direction: column;
@@ -275,7 +270,7 @@ body {
 }
 
 .chat-textarea {
-  width: 100%;
+  width: 90%;
   min-height: 38px;
   max-height: 120px;
   border: 0px;
@@ -297,11 +292,65 @@ body {
   color: var(--text-light);
 }
 
+/* Scrollbar styling */
+.chat-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-textarea::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
 /* ==================== BUTTONS ================================================================= */
-/* Base button styles */
-.clear-chat-button,
-.send-button,
-.mic-button {
+
+/* Unified mic/send button */
+.action-button {
+  position: absolute;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  background-color: transparent;
+  border: none;
+  border-radius: 27px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    opacity 0.25s ease;
+}
+
+/* Hover effect */
+.action-button:hover {
+  background-color: var(--bg-hover-gray);
+}
+
+/* Active press effect */
+.action-button:active {
+  background-color: var(--bg-active-gray);
+}
+
+/* Icon */
+.action-button-icon {
+  width: 50%;
+  height: 50%;
+}
+
+.action-button-icon.mic {
+  width: 50%;
+  height: 50%;
+}
+
+.action-button-icon.send {
+  width: 100%;
+  height: 100%;
+}
+
+.clear-chat-button {
   background-color: transparent;
   border: none;
   border-radius: 27px;
@@ -315,15 +364,11 @@ body {
 }
 
 /* Hover effects for all buttons */
-.clear-chat-button:hover,
-.send-button:hover,
-.mic-button:hover {
+.clear-chat-button:hover {
   background-color: var(--bg-hover-gray);
 }
 
-.clear-chat-button:active,
-.send-button:active,
-.mic-button:active {
+.clear-chat-button:active {
   background-color: var(--bg-active-gray);
 }
 
@@ -333,46 +378,10 @@ body {
   height: 38px;
 }
 
-/* Send and mic buttons (positioned absolutely) */
-.send-button,
-.mic-button {
-  position: absolute;
-  width: 38px;
-  height: 38px;
-}
-
 /* Button icons */
-.send-button-icon,
-.bin-button-icon,
-.mic-button-icon {
+.bin-button-icon {
   width: 50%;
   height: 50%;
-}
-
-/* Disabled states */
-.send-button:disabled,
-.mic-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Mic recording state */
-.mic-button.recording {
-  background: var(--recording-bg);
-  animation: pulse 1.5s infinite;
-}
-
-/* Input active state transitions */
-.input-active .mic-button {
-  opacity: 1;
-  pointer-events: none;
-  transform: scale(0.8);
-}
-
-.input-active .send-button {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1);
 }
 
 /* ==================== TOOLTIPS ================================================================ */
@@ -445,17 +454,5 @@ body {
   40% {
     transform: scale(1);
     opacity: 1;
-  }
-}
-
-/* ==================== RESPONSIVE DESIGN ======================================================= */
-@media (max-width: 768px) {
-  .chat-container {
-    height: 90vh;
-    border-radius: 50px;
-  }
-
-  .message-content {
-    max-width: 85%;
   }
 }
