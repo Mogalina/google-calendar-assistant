@@ -29,7 +29,7 @@ function validateEvent(event) {
   return null;
 }
 
-router.post("/events", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
     const [, accessToken] = authHeader.split("Bearer ");
@@ -96,7 +96,7 @@ router.post("/events", async (req, res) => {
   }
 });
 
-router.put("/events/:eventId", async (req, res) => {
+router.put("/:eventId", async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
     const [, accessToken] = authHeader.split("Bearer ");
@@ -171,7 +171,7 @@ router.put("/events/:eventId", async (req, res) => {
   }
 });
 
-router.delete("/events/:eventId", async (req, res) => {
+router.delete("/:eventId", async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
     const [, accessToken] = authHeader.split("Bearer ");
