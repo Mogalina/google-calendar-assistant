@@ -9,17 +9,17 @@ const router = express.Router();
  */
 router.post("/", async (req, res) => {
   try {
-    // Destructure the user's new message ('input') and the conversation history ('history') from 
-    // the request body.
+    // Destructure the user's new message `input` and the conversation history `history` from the 
+    // request body.
     const { input, history } = req.body;
 
-    // Require the 'input' field to be present.
+    // Require the `input` field to be present.
     if (!input || input === "") {
       return res.status(400).json({ error: "Missing or empty input field" });
     }
 
     // Pass the input and history to the service to be processed by Gemini.
-    // 'history' can be undefined or an empty array for the first message.
+    // `history` can be undefined or an empty array for the first message.
     const response = await continueChat(input, history || []);
 
     // Send the structured response from the Gemini service back to the client.
