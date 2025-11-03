@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import geminiRouter from "./routes/gemini.js";
+import calendarEventsRouter from "./routes/calendar-events.route.js";
 
 // Load environment variables.
 dotenv.config();
@@ -14,6 +15,7 @@ app.use(bodyParser.json());
 
 // Mount the endpoint routers.
 app.use("/api/gemini", geminiRouter);
+app.use("/api/events", calendarEventsRouter);
 
 // Define the port the server will listen on, or default to 5000 if not specified.
 const PORT = process.env.PORT || 5000;
