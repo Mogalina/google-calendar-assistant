@@ -89,3 +89,8 @@ webpack.config.js
 *.bak
 *.tmp
 *.old
+
+# allow extension icons
+!extension/
+!extension/icons/
+!extension/icons/*.png

@@ -1,0 +1,27 @@
+.gca-root { 
+  all: initial; 
+}
+
+.gca-fab {
+  position: fixed;
+  right: 75px;   
+  bottom: 23px;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--assistant-button-shadow);
+  background: var(--assistant-button-background);
+  color: var(--assistant-button-foreground);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.gca-fab:hover { 
+  filter: brightness(1.05); 
+}
