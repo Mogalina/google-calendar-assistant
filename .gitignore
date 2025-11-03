@@ -72,7 +72,6 @@ pnpm-lock.yaml
 # OS files
 Thumbs.db
 ehthumbs.db
-Icon?
 .DS_Store
 ._*
 .Spotlight-V100
@@ -89,8 +88,3 @@ webpack.config.js
 *.bak
 *.tmp
 *.old
-
-# allow extension icons
-!extension/
-!extension/icons/
-!extension/icons/*.png
