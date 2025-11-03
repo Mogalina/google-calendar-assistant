@@ -26,18 +26,25 @@
       "run_at": "document_start",
       "js": [
         "scripts/content.js",
-        "components/assistant-button/assistantActionButton.js"
+        "components/assistant-button/assistantActionButton.js",
+        "chat-panel/script/injectChatPanel.js",
+        "chat-panel/script/app.js"
       ],
       "css": [
-        "components/assistant-button/assistantActionButton.css"
+        "components/assistant-button/assistantActionButton.css",
+        "chat-panel/style/index.css",
+        "chat-panel/style/global.css"
       ]
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "components/assistant-button/assistantActionButton.css", 
-        "icons/icon-128.png"
+        "chat-panel/*",
+        "chat-panel/assets/images/*",
+        "components/assistant-button/*",
+        "components/assistant-button/**/*",
+        "icons/*"
       ],
       "matches": [
         "*://calendar.google.com/*"

@@ -22,7 +22,7 @@ const tooltipText = document.getElementById("tooltip-text");
 
 // Set initial time in the chat
 document.getElementById("initial-time").textContent = new Date().toLocaleTimeString();
-  
+
 // Listen for the form submission event
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault(); 
@@ -32,6 +32,13 @@ chatForm.addEventListener("submit", (e) => {
 
   appendMessage("user", message); 
   chatInput.value = ""; 
+
+  // Reset action button to mic
+  isSendMode = false;
+  actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
+  tooltipText.textContent = "Dictate";
+  actionIcon.classList.remove("send");
+  actionIcon.classList.add("mic");
 
   // Simulate an AI response after a short delay (demo behavior)
   setTimeout(() => appendMessage("ai", "Got it! (demo response)"), 800);
@@ -47,7 +54,7 @@ function appendMessage(sender, text) {
     <div class="avatar ${sender}">
       ${
         sender === "ai"
-          ? `<img class="chat-icon" src="./assests/images/gemini-chat-bot-logo.png"/>`
+          ? `<img class="chat-icon" src="./assets/images/gemini-chat-bot-logo.png"/>`
           : `` 
       }
     </div>
@@ -94,16 +101,24 @@ chatInput.addEventListener("input", () => {
   if (hasText && !isSendMode) {
     // Switch to send mode
     isSendMode = true;
-    actionIcon.src = "./assests/images/arrow-up-icon.png";
+    actionIcon.src = chrome.runtime.getURL("./assets/images/arrow-up-icon.png");
+    // actionIcon.src = "./assets/images/arrow-up-icon.png";
     tooltipText.textContent = "Send";
     actionIcon.classList.remove("mic");
     actionIcon.classList.add("send");
   } else if (!hasText && isSendMode) {
     // Switch back to mic mode
     isSendMode = false;
-    actionIcon.src = "./assests/images/microphone-icon.png";
+    // actionIcon.src = "./assets/images/microphone-icon.png";
+    actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
     tooltipText.textContent = "Dictate";
     actionIcon.classList.remove("send");
     actionIcon.classList.add("mic");
   }
 });
+
+
+
+//  "chat-panel/style/index.css",
+//  "chat-panel/style/global.css"
+// "chat-panel/script/app.js"
