@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Google Calendar Assistant",
+  "description": "Google Calendar Assistant Chrome Extension",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "host_permissions": [
+    "*://calendar.google.com/*"
+  ],
+  "permissions": [
+    "activeTab", 
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js" 
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://calendar.google.com/*"
+      ],
+      "run_at": "document_start",
+      "js": [
+        "scripts/content.js",
+        "components/assistant-button/assistantActionButton.js"
+      ],
+      "css": [
+        "components/assistant-button/assistantActionButton.css"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "components/assistant-button/assistantActionButton.css", 
+        "icons/icon-128.png"
+      ],
+      "matches": [
+        "*://calendar.google.com/*"
+      ]
+    }
+  ]
+}

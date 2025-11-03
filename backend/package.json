@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend service for the Google Calendar Assistant Chrome Extension.",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
@@ -14,7 +15,12 @@
     "dotenv": "^16.0.3",
     "node-fetch": "^2.6.7",
     "googleapis": "^121.0.0",
-    "@google-cloud/secret-manager": "^4.1.0"
+    "@google-cloud/secret-manager": "^4.1.0",
+    "@google/genai": "^1.0.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "morgan": "^1.10.0",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "jest": "^29.5.0",
@@ -77,6 +83,6 @@
     "url": "https://github.com/Mogalina/google-calendar-assistant.git"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
