@@ -1,83 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Chat Panel</title>
-</head>
+    <link rel="stylesheet" href="./style/index.css" />
+  </head>
 
-<body>
-    <div>
-        <div>
-            <div>
-                <img src="./assests/images/gemini-logo.png"/>
-            </div>
-            <div>
-                <h1>Google Calendar Assistant</h1>
-            </div>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <div class="chat-icon-container">
+          <img class="chat-icon" src="./assests/images/gemini-logo.png" />
         </div>
+        <div class="chat-title">
+          <p>Google Calendar Assistant</p>
+        </div>
+      </div>
 
-        <div>
-            <div>
-                <div>
-                    <img src="./assests/images/gemini-chat-bot-logo.png"/>
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <div class="chat-input-area">
+        <form class="input-form" id="chat-form">
+          <button
+            type="button"
+            class="clear-chat-button tooltip"
+            id="clear-chat-button"
+          >
+            <img class="bin-button-icon" src="./assests/images/bin-icon.png" />
+            <span class="tooltip-text">Clear Chat</span>
+          </button>
+          <div class="dropdown" id="mode-dropdown">
+            <button type="button" class="dropdown-btn tooltip" id="mode-btn">
+              <img
+                class="dropdown-btn-icon"
+                src="./assests/images/plus-icon.png"
+              />
+              <span class="tooltip-text">Select Instrument</span>
+            </button>
+
+            <div class="dropdown-menu" id="drawer-menu">
+              <h3 class="dropdown-title">Choose an instrument</h3>
+              <button type="button" data-mode="SmartAdd" class="drawer-option">
+                <div class="drawer-icon">
+                  <img
+                    class="drawer-icon-image"
+                    src="./assests/images/brain-icon.png"
+                  />
                 </div>
-                <div>
-                    <div>Hello! How can I help you today?</div>
-                    <div></div>
+                <div class="drawer-text">
+                  <h3>Smart add</h3>
+                  <p>Quickly create events using natural language.</p>
                 </div>
+              </button>
+
+              <button
+                type="button"
+                data-mode="Suggestion"
+                class="drawer-option"
+              >
+                <div class="drawer-icon">
+                  <img
+                    class="drawer-icon-image"
+                    src="./assests/images/light-bulb-icon.png"
+                  />
+                </div>
+                <div class="drawer-text">
+                  <h3>Suggestion</h3>
+                  <p>Get event ideas or optimize your schedule.</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                data-mode="Reschedule"
+                class="drawer-option"
+              >
+                <div class="drawer-icon">
+                  <img
+                    class="drawer-icon-image"
+                    src="./assests/images/calendar-plus-icon.png"
+                  />
+                </div>
+                <div class="drawer-text">
+                  <h3>Reschedule</h3>
+                  <p>Find new times for your existing events.</p>
+                </div>
+              </button>
             </div>
-        </div>
+          </div>
 
-        <div>
-            <form>
-                <div>
-                    <button>
-                        <img src="./assests/images/plus-icon.png"/>
-                    </button> 
-                    <div>
-                        <button data-mode="SmartAdd">
-                            <div>
-                                <img src="./assests/images/brain-icon.png"/>
-                            </div>
-                            <div>
-                                <h3>Smart add</h3>
-                                <p>Quickly create events using natural language.</p>
-                            </div>
-                        </button>
-                        <button data-mode="Suggestion">
-                            <div>
-                                <img src="./assests/images/light-bulb-icon.png"/>
-                            </div>
-                            <div>
-                                <h3>Suggestion</h3>
-                                <p>Get event ideas or optimize your schedule.</p>
-                            </div>
-                        </button>
-                        <button data-mode="Reschedule">
-                            <div>
-                                <img src="./assests/images/calendar-plus-icon.png"/>
-                            </div>
-                            <div>
-                                <h3>Reschedule</h3>
-                                <p>Find new times for your existing events.</p>
-                            </div>
-                        </button>
-                    </div>
-                </div>
+          <div class="input-wrapper">
+            <textarea
+              class="chat-textarea"
+              id="chat-input"
+              placeholder="Ask me anything"
+              rows="1"
+            ></textarea>
+          </div>
 
-                <div>
-                    <textarea placeholder="Ask me anything..." rows="1"></textarea>
-                </div>
-                
-                <button type="button">
-                    <img src="./assests/images/microphone-icon.png">
-                </button>
-                <button type="submit">
-                    <img src="./assests/images/send-arrow-icon.png"/>
-                </button>
-            </form>
-        </div>
+          <button type="button" class="mic-button tooltip" id="mic-button">
+            <img
+              class="mic-button-icon"
+              src="./assests/images/microphone-icon.png"
+            />
+            <span class="tooltip-text">Dictate</span>
+          </button>
+
+          <button type="submit" class="send-button tooltip" id="send-button">
+            <img
+              class="send-button-icon"
+              src="./assests/images/sent-icon.png"
+            />
+            <span class="tooltip-text">Send</span>
+          </button>
+        </form>
+      </div>
     </div>
-</body>
+
+    <script src="./script/app.js"></script>
+  </body>
 </html>
