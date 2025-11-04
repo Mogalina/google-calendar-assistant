@@ -49,14 +49,14 @@ chatInput.addEventListener("input", () => {
   if (hasText && !isSendMode) {
     // Switch to send mode
     isSendMode = true;
-    actionIcon.src = "./assests/images/arrow-up-icon.png";
+    actionIcon.src = "./assets/images/arrow-up-icon.png";
     tooltipText.textContent = "Send";
     actionIcon.classList.remove("mic");
     actionIcon.classList.add("send");
   } else if (!hasText && isSendMode) {
     // Switch back to mic mode
     isSendMode = false;
-    actionIcon.src = "./assests/images/microphone-icon.png";
+    actionIcon.src = "./assets/images/microphone-icon.png";
     tooltipText.textContent = "Dictate";
     actionIcon.classList.remove("send");
     actionIcon.classList.add("mic");

@@ -5,17 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Chat Panel</title>
     <link rel="stylesheet" href="./style/index.css" />
+    <link rel="stylesheet" href="./style/global.css" />
   </head>
 
   <body>
     <div class="panel-container">
       <div class="chat-container">
         <div class="chat-header">
-          <div class="chat-icon-container">
-            <img class="chat-icon" src="./assests/images/gemini-logo.png" />
+          <div class="chat-header-title">
+            <div class="chat-icon-container">
+              <img class="chat-icon" src="./assets/images/gemini-logo.png" />
+            </div>
+            <div class="chat-title">
+              <p>Google Calendar Assistant</p>
+            </div>
           </div>
-          <div class="chat-title">
-            <p>Google Calendar Assistant</p>
+
+          <div class="chat-header-buttons">
+            <button
+              type="button"
+              class="clear-chat-button tooltip-header"
+              id="clear-chat-button"
+            >
+              <img
+                class="bin-button-icon"
+                src="./assets/images/reset-icon.png"
+              />
+              <span class="tooltip-text-header">Clear Chat</span>
+            </button>
+            <button
+              type="button"
+              class="resize-chat-button tooltip-header"
+              id="resize-chat-button"
+            >
+              <img
+                class="resize-button-icon"
+                src="./assets/images/resize-icon.png"
+              />
+              <span class="tooltip-text-header">Resize Window</span>
+            </button>
+            <button
+              type="button"
+              class="close-chat-button tooltip-header"
+              id="close-chat-button"
+            >
+              <img
+                class="close-button-icon"
+                src="./assets/images/close-icon.png"
+              />
+              <span class="tooltip-text-header">Close Chat</span>
+            </button>
           </div>
         </div>
 
@@ -23,24 +62,13 @@
 
         <div class="chat-input-area">
           <form class="input-form" id="chat-form">
-            <button
-              type="button"
-              class="clear-chat-button tooltip"
-              id="clear-chat-button"
-            >
-              <img
-                class="bin-button-icon"
-                src="./assests/images/bin-icon.png"
-              />
-              <span class="tooltip-text">Clear Chat</span>
-            </button>
             <div class="dropdown" id="mode-dropdown">
               <button type="button" class="dropdown-btn tooltip" id="mode-btn">
                 <img
                   class="dropdown-btn-icon"
-                  src="./assests/images/plus-icon.png"
+                  src="./assets/images/plus-icon.png"
                 />
-                <span class="tooltip-text">Select Instrument</span>
+                <span class="tooltip-text">Select<br />Instrument</span>
               </button>
 
               <div class="dropdown-menu" id="drawer-menu">
@@ -53,7 +81,7 @@
                   <div class="drawer-icon">
                     <img
                       class="drawer-icon-image"
-                      src="./assests/images/brain-icon.png"
+                      src="./assets/images/brain-icon.png"
                     />
                   </div>
                   <div class="drawer-text">
@@ -70,7 +98,7 @@
                   <div class="drawer-icon">
                     <img
                       class="drawer-icon-image"
-                      src="./assests/images/light-bulb-icon.png"
+                      src="./assets/images/light-bulb-icon.png"
                     />
                   </div>
                   <div class="drawer-text">
@@ -87,7 +115,7 @@
                   <div class="drawer-icon">
                     <img
                       class="drawer-icon-image"
-                      src="./assests/images/calendar-plus-icon.png"
+                      src="./assets/images/calendar-plus-icon.png"
                     />
                   </div>
                   <div class="drawer-text">
@@ -108,13 +136,13 @@
             </div>
 
             <button
-              type="button"
+              type="submit"
               class="action-button tooltip"
               id="action-button"
             >
               <img
                 class="action-button-icon"
-                src="./assests/images/microphone-icon.png"
+                src="./assets/images/microphone-icon.png"
                 id="action-icon"
               />
               <span class="tooltip-text" id="tooltip-text">Dictate</span>

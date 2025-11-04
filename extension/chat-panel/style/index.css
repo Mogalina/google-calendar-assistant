@@ -4,56 +4,6 @@
   box-sizing: border-box;
 }
 
-/* ==================== CSS VARIABLES =========================================================== */
-:root {
-  /* Primary Colors */
-  --primary-gradient-start: #394680;
-  --primary-gradient-end: #1a1f4d;
-  --primary-purple-start: #667eea;
-  --primary-purple-end: #764ba2;
-
-  /* Background Colors */
-  --bg-white: #ffffff;
-  --bg-light-gray: #f9fafb;
-  --bg-hover-gray: #f1f3f4;
-  --bg-active-gray: #e5e7eb;
-  --bg-hover-purple: #eef2ff;
-
-  /* Text Colors */
-  --text-primary: #1e1e1e;
-  --text-secondary: #3c3c3c;
-  --text-tertiary: #3f3f3f;
-  --text-muted: #6f6f6f;
-  --text-light: #818181;
-  --text-lighter: #9ca3af;
-  --text-dark: #1f1f1f;
-  --text-user-avatar: #374151;
-
-  /* Border Colors */
-  --border-light: #e5e7eb;
-  --border-medium: #d1d5db;
-
-  /* Shadow Colors */
-  --shadow-dark: rgba(0, 0, 0, 0.3);
-  --shadow-medium: rgba(0, 0, 0, 0.15);
-  --shadow-light: rgba(0, 0, 1, 0.155);
-  --shadow-tooltip: rgba(0, 0, 0, 0.1);
-
-  /* Special Colors */
-  --recording-bg: #555555;
-  --white: white;
-}
-
-/* ==================== FONTS =================================================================== */
-@font-face {
-  font-family: "Readex Pro";
-  src: url("../assests/font/Readex_Pro/ReadexPro-VariableFont_HEXP\,wght.ttf")
-    format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
-
-/* ==================== BODY & LAYOUT ==================== */
 .panel-container {
   font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -69,7 +19,6 @@
   margin: 0;
 }
 
-/* ==================== CHAT CONTAINER ========================================================== */
 .chat-container {
   width: 500px;
   height: 100vh;
@@ -80,12 +29,12 @@
   overflow: hidden;
 }
 
-/* ==================== CHAT HEADER ============================================================= */
 .chat-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-white);
 }
@@ -113,7 +62,14 @@
   color: var(--text-primary);
 }
 
-/* ==================== CHAT MESSAGES =========================================================== */
+.chat-header-title {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -134,14 +90,31 @@
   border-radius: 3px;
 }
 
-/* ==================== DROPDOWN / DRAWER ======================================================= */
+/* Avatar */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.avatar.ai {
+  color: white;
+}
+
 .dropdown {
   position: relative;
 }
 
 .dropdown-btn {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   border: none;
   border-radius: 27px;
   background-color: transparent;
@@ -162,8 +135,8 @@
 }
 
 .dropdown-btn-icon {
-  width: 20px;
-  height: 20px;
+  width: 50%;
+  height: 50%;
   border-radius: 50%;
   transition: transform 0.2s ease;
 }
@@ -245,7 +218,6 @@
   color: var(--text-light);
 }
 
-/* ==================== INPUT AREA ============================================================== */
 .chat-input-area {
   padding: 20px;
   max-height: 300px;
@@ -276,7 +248,7 @@
   border: 0px;
   padding: 10px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.4;
   resize: none;
   outline: none;
@@ -305,7 +277,6 @@
   background: var(--border-medium);
   border-radius: 3px;
 }
-/* ==================== BUTTONS ================================================================= */
 
 /* Unified mic/send button */
 .action-button {
@@ -346,11 +317,20 @@
 }
 
 .action-button-icon.send {
-  width: 100%;
-  height: 100%;
+  width: 35px;
+  height: 35px;
+}
+.chat-header-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.clear-chat-button {
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
   background-color: transparent;
   border: none;
   border-radius: 27px;
@@ -358,13 +338,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease, transform 0.15s ease,
-    opacity 0.25s ease;
   flex-shrink: 0;
 }
 
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    opacity 0.25s ease;
+}
+
 /* Hover effects for all buttons */
-.clear-chat-button:hover {
+.clear-chat-button:hover,
+.close-chat-button:hover,
+.resize-chat-button:hover {
   background-color: var(--bg-hover-gray);
 }
 
@@ -373,18 +360,21 @@
 }
 
 /* Clear chat button */
-.clear-chat-button {
-  width: 38px;
-  height: 38px;
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
+  width: 25px;
+  height: 25px;
 }
 
 /* Button icons */
-.bin-button-icon {
-  width: 50%;
-  height: 50%;
+.bin-button-icon,
+.resize-button-icon,
+.close-button-icon {
+  width: 20px;
+  height: 20px;
 }
 
-/* ==================== TOOLTIPS ================================================================ */
 .tooltip {
   position: relative;
   display: inline-flex;
@@ -432,7 +422,53 @@
   transform: translateX(-50%) translateY(0);
 }
 
-/* ==================== ANIMATIONS ============================================================== */
+.tooltip-header {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip-header .tooltip-text-header {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 120%; /* changed from bottom to top */
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--bg-white);
+  color: var(--text-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px var(--shadow-medium);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* Tooltip arrow (now points upward) */
+.tooltip-header .tooltip-text-header::after {
+  content: "";
+  position: absolute;
+  bottom: 100%; /* changed from top: 100% */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent var(--bg-white) transparent;
+  filter: drop-shadow(0 -2px 2px var(--shadow-tooltip));
+}
+
+/* Show tooltip on hover */
+.tooltip-header:hover .tooltip-text-header {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 @keyframes messageSlideIn {
   from {
     opacity: 0;
