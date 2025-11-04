@@ -12,11 +12,49 @@
     <div class="panel-container">
       <div class="chat-container">
         <div class="chat-header">
-          <div class="chat-icon-container">
-            <img class="chat-icon" src="./assets/images/gemini-logo.png" />
+          <div class="chat-header-title">
+            <div class="chat-icon-container">
+              <img class="chat-icon" src="./assets/images/gemini-logo.png" />
+            </div>
+            <div class="chat-title">
+              <p>Google Calendar Assistant</p>
+            </div>
           </div>
-          <div class="chat-title">
-            <p>Google Calendar Assistant</p>
+
+          <div class="chat-header-buttons">
+            <button
+              type="button"
+              class="clear-chat-button tooltip-header"
+              id="clear-chat-button"
+            >
+              <img
+                class="bin-button-icon"
+                src="./assets/images/reset-icon.png"
+              />
+              <span class="tooltip-text-header">Clear Chat</span>
+            </button>
+            <button
+              type="button"
+              class="resize-chat-button tooltip-header"
+              id="resize-chat-button"
+            >
+              <img
+                class="resize-button-icon"
+                src="./assets/images/resize-icon.png"
+              />
+              <span class="tooltip-text-header">Resize Window</span>
+            </button>
+            <button
+              type="button"
+              class="close-chat-button tooltip-header"
+              id="close-chat-button"
+            >
+              <img
+                class="close-button-icon"
+                src="./assets/images/close-icon.png"
+              />
+              <span class="tooltip-text-header">Close Chat</span>
+            </button>
           </div>
         </div>
 
@@ -37,24 +75,13 @@
 
         <div class="chat-input-area">
           <form class="input-form" id="chat-form">
-            <button
-              type="button"
-              class="clear-chat-button tooltip"
-              id="clear-chat-button"
-            >
-              <img
-                class="bin-button-icon"
-                src="./assets/images/bin-icon.png"
-              />
-              <span class="tooltip-text">Clear Chat</span>
-            </button>
             <div class="dropdown" id="mode-dropdown">
               <button type="button" class="dropdown-btn tooltip" id="mode-btn">
                 <img
                   class="dropdown-btn-icon"
                   src="./assets/images/plus-icon.png"
                 />
-                <span class="tooltip-text">Select Instrument</span>
+                <span class="tooltip-text">Select<br />Instrument</span>
               </button>
 
               <div class="dropdown-menu" id="drawer-menu">

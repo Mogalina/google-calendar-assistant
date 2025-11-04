@@ -35,7 +35,8 @@ chatForm.addEventListener("submit", (e) => {
 
   // Reset action button to mic
   isSendMode = false;
-  actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
+  // actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
+  actionIcon.src = "./assets/images/microphone-icon.png";
   tooltipText.textContent = "Dictate";
   actionIcon.classList.remove("send");
   actionIcon.classList.add("mic");

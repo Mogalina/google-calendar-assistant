@@ -32,8 +32,9 @@
 .chat-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-white);
 }
@@ -364,11 +365,20 @@
 }
 
 .action-button-icon.send {
-  width: 100%;
-  height: 100%;
+  width: 35px;
+  height: 35px;
+}
+.chat-header-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.clear-chat-button {
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
   background-color: transparent;
   border: none;
   border-radius: 27px;
@@ -384,8 +394,17 @@
     opacity 0.25s ease;
 }
 
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
+  transition: background-color 0.2s ease, transform 0.15s ease,
+    opacity 0.25s ease;
+}
+
 /* Hover effects for all buttons */
-.clear-chat-button:hover {
+.clear-chat-button:hover,
+.close-chat-button:hover,
+.resize-chat-button:hover {
   background-color: var(--bg-hover-gray);
 }
 
@@ -394,44 +413,21 @@
 }
 
 /* Clear chat button */
-.clear-chat-button {
-  width: 38px;
-  height: 38px;
+.clear-chat-button,
+.close-chat-button,
+.resize-chat-button {
+  width: 25px;
+  height: 25px;
 }
 
 /* Button icons */
-.bin-button-icon {
-  width: 50%;
-  height: 50%;
+.bin-button-icon,
+.resize-button-icon,
+.close-button-icon {
+  width: 20px;
+  height: 20px;
 }
 
-/* Disabled states */
-.send-button:disabled,
-.mic-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Mic recording state */
-.mic-button.recording {
-  background: var(--recording-bg);
-  animation: pulse 1.5s infinite;
-}
-
-/* Input active state transitions */
-.input-active .mic-button {
-  opacity: 1;
-  pointer-events: none;
-  transform: scale(0.8);
-}
-
-.input-active .send-button {
-  opacity: 1;
-  pointer-events: auto;
-  transform: scale(1);
-}
-
-/* ==================== TOOLTIPS ================================================================ */
 .tooltip {
   position: relative;
   display: inline-flex;
@@ -474,6 +470,53 @@
 
 /* Show tooltip on hover */
 .tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-header {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tooltip-header .tooltip-text-header {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  top: 120%; /* changed from bottom to top */
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: var(--bg-white);
+  color: var(--text-dark);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px var(--shadow-medium);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+/* Tooltip arrow (now points upward) */
+.tooltip-header .tooltip-text-header::after {
+  content: "";
+  position: absolute;
+  bottom: 100%; /* changed from top: 100% */
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent var(--bg-white) transparent;
+  filter: drop-shadow(0 -2px 2px var(--shadow-tooltip));
+}
+
+/* Show tooltip on hover */
+.tooltip-header:hover .tooltip-text-header {
   visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
