@@ -376,6 +376,13 @@
   gap: 10px;
 }
 
+.chat-header-title{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
 .clear-chat-button,
 .close-chat-button,
 .resize-chat-button {
