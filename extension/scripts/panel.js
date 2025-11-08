@@ -36,7 +36,7 @@ chatForm.addEventListener("submit", (e) => {
   // Reset action button to mic
   isSendMode = false;
   // actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
-  actionIcon.src = "./assets/images/microphone-icon.png";
+  actionIcon.src = "../../assets/images/microphone-icon.png";
   tooltipText.textContent = "Dictate";
   actionIcon.classList.remove("send");
   actionIcon.classList.add("mic");
@@ -55,7 +55,7 @@ function appendMessage(sender, text) {
     <div class="avatar ${sender}">
       ${
         sender === "ai"
-          ? `<img class="chat-icon" src="./assets/images/gemini-chat-bot-logo.png"/>`
+          ? `<img class="chat-icon" src="../../assets/images/gemini-chat-bot-logo.png"/>`
           : `` 
       }
     </div>
@@ -102,24 +102,18 @@ chatInput.addEventListener("input", () => {
   if (hasText && !isSendMode) {
     // Switch to send mode
     isSendMode = true;
-    actionIcon.src = chrome.runtime.getURL("./assets/images/arrow-up-icon.png");
-    // actionIcon.src = "./assets/images/arrow-up-icon.png";
+    // actionIcon.src = chrome.runtime.getURL("./assets/images/arrow-up-icon.png");
+    actionIcon.src = "../../assets/images/arrow-up-icon.png";
     tooltipText.textContent = "Send";
     actionIcon.classList.remove("mic");
     actionIcon.classList.add("send");
   } else if (!hasText && isSendMode) {
     // Switch back to mic mode
     isSendMode = false;
-    // actionIcon.src = "./assets/images/microphone-icon.png";
-    actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
+    actionIcon.src = "../../assets/images/microphone-icon.png";
+    //actionIcon.src = chrome.runtime.getURL("./assets/images/microphone-icon.png");
     tooltipText.textContent = "Dictate";
     actionIcon.classList.remove("send");
     actionIcon.classList.add("mic");
   }
 });
-
-
-
-//  "chat-panel/style/index.css",
-//  "chat-panel/style/global.css"
-// "chat-panel/script/app.js"
