@@ -1,14 +1,14 @@
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --omit=dev || npm install --omit=dev
+RUN npm ci --omit=dev --no-fund --no-audit
 
 COPY src ./src
 COPY .env* ./
 
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
