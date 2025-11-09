@@ -1,7 +1,7 @@
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import geminiRouter from "./routes/gemini.routes.js";
+import geminiRouter from "./routes/gemini.route.js";
 import calendarEventsRouter from "./routes/calendarEvents.route.js";
 
 // Load environment variables
