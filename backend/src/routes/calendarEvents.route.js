@@ -86,34 +86,4 @@ router.put("/:eventId", requireAccessToken, async (req, res) => {
   }
 });
 
-/**
- * Deletes an existing Google Calendar event.
- */
-router.delete("/:eventId", requireAccessToken, async (req, res) => {
-  try {
-    const { eventId } = req.params;
-    if (!eventId) {
-      return sendErrorResponse(res, 400, 'Event identifier parameter is required.');
-    }
-
-    const { calendarId = "primary", sendUpdates = "all" } = req.body || {};
-
-    // Create authenticated Google Calendar client
-    const calendar = createCalendarClient(req.accessToken);
-
-    // Delete the event in Google Calendar
-    await calendar.events.delete({
-      calendarId,
-      eventId,
-      sendUpdates,
-    });
-
-    // Respond with no content to indicate success of deletion
-    return res.status(204).end();
-    
-  } catch (err) {
-    return handleGoogleApiError(res, err);
-  }
-});
-
 export default router;
