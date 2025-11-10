@@ -3,6 +3,7 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import geminiRouter from "./routes/gemini.route.js";
 import calendarEventsRouter from "./routes/calendarEvents.route.js";
+import oauthRouter from "./routes/oauth.route.js";
 
 // Load environment variables
 dotenv.config();
@@ -14,6 +15,7 @@ const app = express();
 app.use(bodyParser.json());
 
 // Mount the endpoint routers
+app.use("/api/auth", oauthRouter);
 app.use("/api/gemini", geminiRouter);
 app.use("/api/events", calendarEventsRouter);
 
