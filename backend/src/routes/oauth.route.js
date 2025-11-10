@@ -7,22 +7,29 @@ dotenv.config();
 
 const router = Router();
 
+/**
+ * Initializes a new OAuth2 client instance from Google's API library.
+ */
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// Required scopes for calendar access
+/**
+ * Required scopes for calendar access.
+ * Scopes define what permissions your app is requesting from the user.
+ */
 const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.readonly'
 ];
 
 /**
- * Initiates the OAuth2 flow by redirecting to Google's authorization page
+ * Initiates the OAuth2 flow by redirecting to Google's authorization page.
  */
 router.get("/authorize", (_req, res) => {
+  // Build Google OAuth URL with required parameters
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
@@ -34,7 +41,7 @@ router.get("/authorize", (_req, res) => {
 });
 
 /**
- * Handles the OAuth2 callback from Google
+ * Handles the callback from Google after the user grants permission.
  */
 router.get("/callback", async (req, res) => {
   const { code } = req.query;
@@ -43,13 +50,13 @@ router.get("/callback", async (req, res) => {
   }
 
   try {
-    // Exchange authorization code for access token
+    // Exchange authorization code for access and refresh tokens
     const { tokens } = await oauth2Client.getToken({
         code,
         redirect_uri: process.env.GOOGLE_REDIRECT_URI
     });
     
-    // Return tokens to the client
+    // Respond with the tokens to the client
     res.json({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -63,7 +70,8 @@ router.get("/callback", async (req, res) => {
 });
 
 /**
- * Refreshes an expired access token using the refresh token
+ * Refreshes an expired access token using the user's stored refresh token.
+ * This prevents the need to reauthorize each time a token expires.
  */
 router.post("/refresh", async (req, res) => {
   const { refresh_token } = req.body;
@@ -72,9 +80,13 @@ router.post("/refresh", async (req, res) => {
   }
 
   try {
+    // Attach the existing refresh token to OAuth2 client
     oauth2Client.setCredentials({ refresh_token });
+
+    // Request a new access token
     const { credentials } = await oauth2Client.refreshAccessToken();
     
+    // Return the new access token and its expiration time
     res.json({
       access_token: credentials.access_token,
       expiry_date: credentials.expiry_date
