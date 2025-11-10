@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
 import geminiRouter from "./routes/gemini.route.js";
-import calendarEventsRouter from "./routes/calendarEvents.route.js";
+import calendarRouter from "./routes/calendar.route.js";
 import oauthRouter from "./routes/oauth.route.js";
 
 // Load environment variables
@@ -17,7 +17,7 @@ app.use(bodyParser.json());
 // Mount the endpoint routers
 app.use("/api/auth", oauthRouter);
 app.use("/api/gemini", geminiRouter);
-app.use("/api/events", calendarEventsRouter);
+app.use("/api/events", calendarRouter);
 
 // Define the port the server will listen on
 const PORT = process.env.PORT || 5000;

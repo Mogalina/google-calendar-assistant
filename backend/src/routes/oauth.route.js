@@ -45,6 +45,7 @@ router.get("/authorize", (_req, res) => {
  */
 router.get("/callback", async (req, res) => {
   const { code } = req.query;
+
   if (!code) {
     return sendErrorResponse(res, 400, "Authorization code missing");
   }
@@ -75,6 +76,7 @@ router.get("/callback", async (req, res) => {
  */
 router.post("/refresh", async (req, res) => {
   const { refresh_token } = req.body;
+  
   if (!refresh_token) {
     return sendErrorResponse(res, 500, "Refresh token required");
   }
