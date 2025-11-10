@@ -51,6 +51,7 @@ export function handleGoogleApiError(res, err) {
     401: "Unauthorized: Invalid or expired access token, or missing required scopes.",
     403: "Forbidden: Insufficient permissions or rate limit exceeded.",
     404: "Not Found: The requested calendar or event does not exist.",
+    429: "Rate limit exceeded. Please try again later.",
     500: "Internal Error: Something went wrong with Google Calendar API.",
   };
 
