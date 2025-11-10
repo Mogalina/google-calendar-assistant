@@ -1,5 +1,6 @@
 import express from "express";
 import { continueChat } from "../services/geminiService.js";
+import { sendErrorResponse } from "../utils/utils.js";
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post("/", async (req, res) => {
 
     // Require the `input` field to be present.
     if (!input || input === "") {
-      return res.status(400).json({ error: "Missing or empty input field" });
+      return sendErrorResponse(res, 400, "Missing or empty input field");
     }
 
     // Pass the input and history to the service to be processed by Gemini.
@@ -27,7 +28,7 @@ router.post("/", async (req, res) => {
     
   } catch (error) {
     console.error("Error calling Gemini:", error);
-    res.status(500).json({ error: error.message || "Failed to call Gemini API" });
+    return sendErrorResponse(res, 500, "Failed to call Gemini API", { raw: error.message });
   }
 });
 

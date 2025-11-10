@@ -9,10 +9,10 @@ const client = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-// Hold the model configuration loaded from file.
+// Hold the model configuration loaded from file
 let geminiConfig;
 
-// Attempt to read and parse the external Gemini configuration file.
+// Attempt to read and parse the external Gemini configuration file
 try {
   const configFile = fs.readFileSync("src/config/gemini.yaml", "utf8");
   geminiConfig = yaml.load(configFile);
@@ -44,15 +44,15 @@ export async function continueChat(input, history = []) {
   }
 
   try {
-    // Create a new, temporary chat session for this specific request.
+    // Create a new, temporary chat session for this specific request
     const chat = client.chats.create({
         ...geminiConfig,
-        // Pre-load the session with the history received from the client. 
-        // This is what maintains the conversational context.
+        // Pre-load the session with the history received from the client
+        // This is what maintains the conversational context
         history: history 
     });
 
-    // Send the new user message to the chat session.
+    // Send the new user message to the chat session
     const result = await chat.sendMessage({ message: input });
 
     const text = result?.text?.trim();
