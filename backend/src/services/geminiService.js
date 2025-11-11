@@ -36,7 +36,7 @@ try {
       Your sole purpose is to analyze the user's existing calendar events and their requests 
       to suggest the most efficient, conflict-free, and productive schedule changes.`,
       temperature: 0.7,
-      maxOutputTokens: 200
+      maxOutputTokens: 600
     }
   };
 }
@@ -44,10 +44,18 @@ try {
 /**
  * Creates a new calendar event using the provided parameters.
  */
-async function handleCreate(accessToken, params) {
+async function handleCreate(accessToken, params, userTimeZone) {
   // Fallback for missing summary
   if (!params.summary || params.summary.trim() === "") {
     params.summary = "Untitled Event";
+  }
+
+  // Attach timezone to start and end if not present
+  if (params.start?.dateTime && !params.start.timeZone) {
+    params.start.timeZone = userTimeZone;
+  }
+  if (params.end?.dateTime && !params.end.timeZone) {
+    params.end.timeZone = userTimeZone;
   }
 
   return await createEvent(
@@ -164,9 +172,10 @@ async function handleDelete(accessToken, params) {
  * @param {string} input - The new user prompt.
  * @param {Array<object>} history - The full conversation history sent by the client.
  * @param {string|null} accessToken - Optional OAuth2 access token for calendar operations.
+ * @param {string} userTimeZone - The user's current timezone.
  * @returns {Promise<{output: string, action?: string, calendarResult?: any}>} 
  */
-export async function continueChat(input, history = [], accessToken = null) {
+export async function continueChat(input, history = [], accessToken = null, userTimeZone = "UTC") {
   // Require the `input` field to be present
   if (!input || typeof input !== "string") {
     throw new Error("Invalid user input for Gemini");
@@ -182,7 +191,11 @@ export async function continueChat(input, history = [], accessToken = null) {
   try {
     // Add current date or time context for calendar operations
     const currentDateTime = new Date().toISOString();
-    const contextualInput = `Current datetime: ${currentDateTime}\nUser request: ${input}`;
+    const contextualInput = `
+      Current datetime: ${currentDateTime}
+      User timezone: ${userTimeZone}
+      User request: ${input}
+    `;
 
     // Create a new, temporary chat session for this specific request
     const chat = client.chats.create({
@@ -196,9 +209,9 @@ export async function continueChat(input, history = [], accessToken = null) {
     const result = await chat.sendMessage({ message: contextualInput });
     
     // Extract text from Gemini response
-    const candidate = result?.candidates?.[0];
-    const text = candidate?.content?.[0]?.text?.trim();
+    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text || text === "") {
+      console.log(JSON.stringify(result, null, 2));
       throw new Error("Gemini returned empty response");
     }
 
@@ -224,7 +237,7 @@ export async function continueChat(input, history = [], accessToken = null) {
     // Execute the appropriate calendar action
     switch (action) {
       case "create":
-        calendarResult = await handleCreate(accessToken, params);
+        calendarResult = await handleCreate(accessToken, params, userTimeZone);
         break;
       case "list":
         calendarResult = await handleList(accessToken, params, geminiResponse);

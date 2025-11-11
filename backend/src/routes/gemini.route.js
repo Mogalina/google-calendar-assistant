@@ -11,8 +11,8 @@ const router = express.Router();
 router.post("/", async (req, res) => {
   try {
     // Destructure the user's new message `input` and the conversation history `history` from the 
-    // request body
-    const { input, history } = req.body;
+    // request body, including caller's timezone for event scheduling
+    const { input, history, timezone } = req.body;
 
     // Require the `input` field to be present
     if (!input || input === "") {
@@ -25,9 +25,12 @@ router.post("/", async (req, res) => {
       return sendErrorResponse(res, 401, "Access token required.");
     }
 
+    // Prefer client-provided timezone
+    const userTimeZone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
     // Pass the input and history to the service to be processed by Gemini
     // `history` can be undefined or an empty array for the first message
-    const response = await continueChat(input, history || [], accessToken);
+    const response = await continueChat(input, history || [], accessToken, userTimeZone);
 
     // Send the structured response from the Gemini service back to the client
     res.json(response);
