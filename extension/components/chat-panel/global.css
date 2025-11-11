@@ -41,7 +41,7 @@
 
 @font-face {
   font-family: "Readex Pro";
-  src: url("chrome-extension://__MSG_@@extension_id__/assets/font/ReadexPro/ReadexPro.ttf")
+  src: url("chrome-extension://__MSG_@@extension_id__/assets/fonts/readex-pro/ReadexPro.ttf")
     format("truetype");
   font-weight: normal;
   font-style: normal;

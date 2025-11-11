@@ -1,8 +1,8 @@
 (() => {
-  // Initializes the Google Calendar Assistant floating action button.
+  // Initializes the Google Calendar Assistant floating action button
   function initAssistantButton() {
     if (window.__assistantButtonInjected) {
-      // Prevent multiple injections per page.
+      // Prevent multiple injections per page
       return;
     }
     window.__assistantButtonInjected = true;
@@ -19,12 +19,12 @@
       return link;
     };
 
-    // Create host and attach shadow document object model to isolate styles.
+    // Create host and attach shadow document object model to isolate styles
     const host = document.createElement("div");
     const shadowRoot = host.attachShadow({ mode: "open" });
     document.documentElement.appendChild(host);
 
-    // Load external styles.
+    // Load external styles
     const stylesheetPaths = [
       "components/assistant-button/assistantActionButton.css",
     ];
@@ -32,25 +32,89 @@
       shadowRoot.appendChild(createStylesheet(path))
     );
 
-    // Create the floating assistant button wrapper.
-    const assistantButtonWrapper = document.createElement("div");
-    assistantButtonWrapper.className = "assistant-button-container";
+    // Create the floating assistant button wrapper
+    const assistantButtonWrapper = document.createElement('div');
+    assistantButtonWrapper.className = 'assistant-button-container';
     shadowRoot.appendChild(assistantButtonWrapper);
 
-    // Create the assistant action button.
-    const assistantButton = document.createElement("button");
-    assistantButton.className = "assistant-button";
-    assistantButton.setAttribute("aria-label", "Calendar Assistant");
+    // Create the assistant action button
+    const assistantButton = document.createElement('button');
+    assistantButton.className = 'assistant-button';
+    assistantButton.setAttribute('aria-label', 'Calendar Assistant');
 
-    // Add the assistant icon inside the button.
-    const assistantIconImage = document.createElement("img");
-    assistantIconImage.src = chrome.runtime.getURL("icons/icon-128.png");
-    assistantIconImage.alt = "Assistant Icon";
-    assistantIconImage.className = "assistant-icon";
+    // Add the assistant icon inside the button
+    const assistantIconImage = document.createElement('img');
+    assistantIconImage.src = chrome.runtime.getURL('icons/icon-128.png');
+    assistantIconImage.alt = 'Assistant Icon';
+    assistantIconImage.className = 'assistant-icon';
     assistantButton.appendChild(assistantIconImage);
 
     assistantButtonWrapper.appendChild(assistantButton);
-    assistantButton.addEventListener("click", handleButtonClick);
+
+    // Variables to track dragging state
+    let isMoving = false;
+    let offsetX, offsetY;
+
+    /**
+     * Handles the 'pointerdown' event to initiate a drag.
+     * @param {PointerEvent} e - The pointer event object.
+     */
+    const onPointerDown = (e) => {
+      if (e.button !== 0) return;
+
+      isMoving = false; 
+      
+      const rect = assistantButtonWrapper.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+
+      assistantButtonWrapper.style.bottom = 'unset';
+      assistantButtonWrapper.style.right = 'unset';
+
+      assistantButtonWrapper.style.left = `${rect.left}px`;
+      assistantButtonWrapper.style.top = `${rect.top}px`;
+      
+      assistantButtonWrapper.style.cursor = 'grabbing';
+      assistantButtonWrapper.style.userSelect = 'none';
+
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+    };
+
+    /**
+     * Handles the 'pointermove' event to update the element's position while dragging.
+     * @param {PointerEvent} e - The pointer event object.
+     */
+    const onPointerMove = (e) => {
+      e.preventDefault(); 
+      isMoving = true; 
+      
+      let newLeft = e.clientX - offsetX;
+      let newTop = e.clientY - offsetY;
+
+      const rect = assistantButtonWrapper.getBoundingClientRect();
+      newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
+      newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
+
+      assistantButtonWrapper.style.left = `${newLeft}px`;
+      assistantButtonWrapper.style.top = `${newTop}px`;
+    };
+
+    // Handles the 'pointerup' event to stop the drag and clean up listeners
+    const onPointerUp = () => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+
+      assistantButtonWrapper.style.cursor = 'grab';
+      assistantButtonWrapper.style.userSelect = 'unset';
+
+      setTimeout(() => {
+        isMoving = false;
+      }, 0);
+    };
+
+    assistantButtonWrapper.addEventListener('pointerdown', onPointerDown);
+    assistantButton.addEventListener('click', handleButtonClick);
 
     // Listen for messages to toggle button visibility
     window.addEventListener("message", (event) => {
@@ -63,13 +127,16 @@
       }
     });
 
-    // Handles assistant button click events.
+    // Handles assistant button click events
     function handleButtonClick() {
-      const eventName = "AssistantButton:click";
+      if (isMoving) {
+        return;
+      }
+      const eventName = 'AssistantButton:click';
       window.dispatchEvent(new CustomEvent(eventName));
       window.postMessage({ type: "ASSISTANT_BUTTON_CLICK" }, "*");
     }
   }
-
+  
   initAssistantButton();
 })();

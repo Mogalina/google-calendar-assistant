@@ -7,11 +7,7 @@
 .panel-container {
   font-family: "Readex Pro", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(
-    135deg,
-    var(--primary-gradient-start) 0%,
-    var(--primary-gradient-end) 100%
-  );
+  background: transparent;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -88,7 +84,6 @@
   min-height: 0;
 }
 
-/* Scrollbar styling */
 .chat-messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -102,7 +97,6 @@
   border-radius: 3px;
 }
 
-/* Message container */
 .message {
   display: flex;
   gap: 10px;
@@ -119,7 +113,6 @@
   margin-left: auto;
 }
 
-/* Message content */
 .message-content {
   display: flex;
   flex-direction: column;
@@ -190,7 +183,6 @@
   transition: transform 0.2s ease;
 }
 
-/* Rotate icon when dropdown is open */
 .dropdown.open .dropdown-btn-icon {
   transform: rotate(180deg);
 }
@@ -241,7 +233,6 @@
   color: var(--text-light);
 }
 
-/* Scrollbar styling */
 .chat-textarea::-webkit-scrollbar {
   width: 6px;
 }
@@ -255,7 +246,6 @@
   border-radius: 3px;
 }
 
-/* Unified mic/send button */
 .action-button {
   position: absolute;
   right: 10px;
@@ -268,21 +258,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s ease, transform 0.15s ease,
-    opacity 0.25s ease;
+  transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.25s ease;
 }
 
-/* Hover effect */
-.action-button:hover {
-  background-color: var(--bg-hover-gray);
-}
-
-/* Active press effect */
 .action-button:active {
   background-color: var(--bg-active-gray);
 }
 
-/* Icon */
 .action-button-icon {
   width: 35px;
   height: 35px;
@@ -297,12 +279,13 @@
   width: 35px;
   height: 35px;
 }
+
 .chat-header-buttons {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 4px;
 }
 
 .chat-header-title {
@@ -325,19 +308,12 @@
   flex-shrink: 0;
 }
 
-.clear-chat-button {
-  transition: background-color 0.2s ease, transform 0.15s ease,
-    opacity 0.25s ease;
-}
-
 .clear-chat-button,
 .close-chat-button,
 .resize-chat-button {
-  transition: background-color 0.2s ease, transform 0.15s ease,
-    opacity 0.25s ease;
+  transition: background-color 0.2s ease, transform 0.15s ease, opacity 0.25s ease;
 }
 
-/* Hover effects for all buttons */
 .clear-chat-button:hover,
 .close-chat-button:hover,
 .resize-chat-button:hover {
@@ -348,15 +324,13 @@
   background-color: var(--bg-active-gray);
 }
 
-/* Clear chat button */
 .clear-chat-button,
 .close-chat-button,
 .resize-chat-button {
-  width: 25px;
-  height: 25px;
+  width: 35px;
+  height: 35px;
 }
 
-/* Button icons */
 .bin-button-icon,
 .resize-button-icon,
 .close-button-icon {
@@ -391,7 +365,6 @@
   pointer-events: none;
 }
 
-/* Tooltip arrow */
 .tooltip .tooltip-text::after {
   content: "";
   position: absolute;
@@ -404,7 +377,6 @@
   filter: drop-shadow(0 2px 2px var(--shadow-tooltip));
 }
 
-/* Show tooltip on hover */
 .tooltip:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
@@ -422,7 +394,7 @@
   visibility: hidden;
   opacity: 0;
   position: absolute;
-  top: 120%; /* changed from bottom to top */
+  top: 120%;
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
   background: var(--bg-white);
@@ -438,11 +410,10 @@
   pointer-events: none;
 }
 
-/* Tooltip arrow (now points upward) */
 .tooltip-header .tooltip-text-header::after {
   content: "";
   position: absolute;
-  bottom: 100%; /* changed from top: 100% */
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
   border-width: 6px;
@@ -451,7 +422,6 @@
   filter: drop-shadow(0 -2px 2px var(--shadow-tooltip));
 }
 
-/* Show tooltip on hover */
 .tooltip-header:hover .tooltip-text-header {
   visibility: visible;
   opacity: 1;
