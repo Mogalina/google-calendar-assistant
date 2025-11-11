@@ -1,19 +1,18 @@
 /* Root container resets all inherited styles to avoid conflicts with host page */
 .assistant-button-container {
-  all: initial;
+  position: fixed;
+  right: 45px;
+  bottom: 45px;
+  z-index: 2147483647;
+  cursor: grab;
 }
 
 /* Floating assistant button styles */
 .assistant-button {
-  position: fixed;
-  right: 45px;
-  bottom: 45px;
   width: 56px;
   height: 56px;
   border: none;
   border-radius: 50%;
-  cursor: pointer;
-  z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
