@@ -18,10 +18,10 @@ export function createCalendarClient(accessToken) {
  * Creates a new event in the user's calendar.
  * Validates event structure and inserts it using Google Calendar API.
  * 
- * @param {string} accessToken - OAuth2 access token
- * @param {string} calendarId - Calendar identifier
- * @param {Object} eventData - Event details
- * @returns {Promise<Object>} Created event object
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} calendarId - Calendar identifier.
+ * @param {Object} eventData - Event details.
+ * @returns {Promise<Object>} Created event object.
  */
 export async function createEvent(accessToken, calendarId = "primary", eventData) {
   // Create an authenticated Google Calendar client using user's access token
@@ -47,12 +47,12 @@ export async function createEvent(accessToken, calendarId = "primary", eventData
  * Updates an existing event in the user's calendar.
  * Validates the updated event data and applies changes using the API.
  * 
- * @param {string} accessToken - OAuth2 access token
- * @param {string} eventId - Identifier of the event to update
- * @param {string} calendarId - Calendar identifier
- * @param {Object} eventData - Updated event details
- * @param {string} sendUpdates - How updates are sent to attendees
- * @returns {Promise<Object>} Updated event object
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} eventId - Identifier of the event to update.
+ * @param {string} calendarId - Calendar identifier.
+ * @param {Object} eventData - Updated event details.
+ * @param {string} sendUpdates - How updates are sent to attendees.
+ * @returns {Promise<Object>} Updated event object.
  */
 export async function updateEvent(
   accessToken,
@@ -89,11 +89,11 @@ export async function updateEvent(
 /**
  * Deletes an event from the user's calendar.
  * 
- * @param {string} accessToken - OAuth2 access token
- * @param {string} eventId - Identifier of the event to delete
- * @param {string} calendarId - Calendar identifier
- * @param {string} sendUpdates - How updates are sent to attendees
- * @returns {Promise<Object>} Success confirmation
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} eventId - Identifier of the event to delete.
+ * @param {string} calendarId - Calendar identifier.
+ * @param {string} sendUpdates - How updates are sent to attendees.
+ * @returns {Promise<Object>} Success confirmation.
  */
 export async function deleteEvent(
   accessToken,
@@ -118,13 +118,13 @@ export async function deleteEvent(
  * Lists events in a given time interval.
  * Defaults to the next 24 hours if no start or end is provided.
  * 
- * @param {string} accessToken - OAuth2 access token
- * @param {Object} options - Query options
- * @param {string} options.calendarId - Calendar identifier
- * @param {number} options.maxResults - Maximum events to return
- * @param {string} options.start - ISO string for interval start
- * @param {string} options.end - ISO string for interval end
- * @returns {Promise<Array>} Array of events
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {Object} options - Query options.
+ * @param {string} options.calendarId - Calendar identifier.
+ * @param {number} options.maxResults - Maximum events to return.
+ * @param {string} options.start - ISO string for interval start.
+ * @param {string} options.end - ISO string for interval end.
+ * @returns {Promise<Array>} Array of events.
  */
 export async function listEvents(
   accessToken,
@@ -162,12 +162,12 @@ export async function listEvents(
 /**
  * Searches events by a query text in summary, description, or location.
  * 
- * @param {string} accessToken - OAuth2 access token
- * @param {string} query - Search string (required)
- * @param {Object} options - Query options
- * @param {string} options.calendarId - Calendar identifier
- * @param {number} options.maxResults - Maximum events to return
- * @returns {Promise<Array>} Array of matching events
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} query - Search string (required).
+ * @param {Object} options - Query options.
+ * @param {string} options.calendarId - Calendar identifier.
+ * @param {number} options.maxResults - Maximum events to return.
+ * @returns {Promise<Array>} Array of matching events.
  */
 export async function searchEvents(
   accessToken,

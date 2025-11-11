@@ -7,9 +7,7 @@ dotenv.config();
 
 const router = Router();
 
-/**
- * Initializes a new OAuth2 client instance from Google's API library.
- */
+// Initializes a new OAuth2 client instance from Google's API library
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
