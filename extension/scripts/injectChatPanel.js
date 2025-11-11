@@ -183,15 +183,15 @@
    * Closes the chat panel and restores the assistant button.
    */
   function closeChatPanel() {
-    if (!panelHost) return;
+    if (!panelHost) {
+      return;
+    }
 
-    console.log("Closing chat panel...");
     panelHost.style.display = "none";
     panelHost.style.transform = "translateY(100%)";
     panelHost.style.opacity = "0";
     toggleAssistantButton(true);
     isFullHeight = true;
-    console.log("Panel closed successfully");
   }
 
   /**

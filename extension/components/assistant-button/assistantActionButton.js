@@ -60,7 +60,9 @@
      * @param {PointerEvent} e - The pointer event object.
      */
     const onPointerDown = (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0) {
+        return;
+      }
 
       isMoving = false; 
       
