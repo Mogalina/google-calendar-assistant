@@ -1,22 +1,26 @@
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import geminiRouter from "./routes/gemini.js";
+import geminiRouter from "./routes/gemini.route.js";
+import calendarRouter from "./routes/calendar.route.js";
+import oauthRouter from "./routes/oauth.route.js";
 
-// Load environment variables.
+// Load environment variables
 dotenv.config();
 
-// Create the main application instance.
+// Create the main application instance
 const app = express();
 
-// Use middleware to parse incoming request bodies.
+// Use middleware to parse incoming request bodies
 app.use(bodyParser.json());
 
-// Mount the endpoint routers.
+// Mount the endpoint routers
+app.use("/api/auth", oauthRouter);
 app.use("/api/gemini", geminiRouter);
+app.use("/api/events", calendarRouter);
 
-// Define the port the server will listen on, or default to 5000 if not specified.
+// Define the port the server will listen on
 const PORT = process.env.PORT || 5000;
 
-// Start the server and listen for connections.
+// Start the server and listen for connections
 app.listen(PORT, () => console.log(`Google Calendar Assistant server running on port ${PORT}`));
