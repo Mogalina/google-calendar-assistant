@@ -1,8 +1,8 @@
 (() => {
-  // Initializes the Google Calendar Assistant floating action button.
+  // Initializes the Google Calendar Assistant floating action button
   function initAssistantButton() {
     if (window.__assistantButtonInjected) {
-      // Prevent multiple injections per page.
+      // Prevent multiple injections per page
       return;
     }
     window.__assistantButtonInjected = true;
@@ -19,12 +19,12 @@
       return link;
     };
 
-    // Create host and attach shadow document object model to isolate styles.
+    // Create host and attach shadow document object model to isolate styles
     const host = document.createElement('div');
     const shadowRoot = host.attachShadow({ mode: 'open' });
     document.documentElement.appendChild(host);
 
-    // Load external styles.
+    // Load external styles
     const stylesheetPaths = [
       'components/assistant-button/assistantActionButton.css'
     ];
@@ -32,17 +32,17 @@
       shadowRoot.appendChild(createStylesheet(path))
     );
 
-    // Create the floating assistant button wrapper.
+    // Create the floating assistant button wrapper
     const assistantButtonWrapper = document.createElement('div');
     assistantButtonWrapper.className = 'assistant-button-container';
     shadowRoot.appendChild(assistantButtonWrapper);
 
-    // Create the assistant action button.
+    // Create the assistant action button
     const assistantButton = document.createElement('button');
     assistantButton.className = 'assistant-button';
     assistantButton.setAttribute('aria-label', 'Calendar Assistant');
 
-    // Add the assistant icon inside the button.
+    // Add the assistant icon inside the button
     const assistantIconImage = document.createElement('img');
     assistantIconImage.src = chrome.runtime.getURL('icons/icon-128.png');
     assistantIconImage.alt = 'Assistant Icon';
@@ -51,7 +51,7 @@
 
     assistantButtonWrapper.appendChild(assistantButton);
 
-    // Variables to track dragging state.
+    // Variables to track dragging state
     let isMoving = false;
     let offsetX, offsetY;
 
@@ -100,9 +100,7 @@
       assistantButtonWrapper.style.top = `${newTop}px`;
     };
 
-    /**
-     * Handles the 'pointerup' event to stop the drag and clean up listeners.
-     */
+    // Handles the 'pointerup' event to stop the drag and clean up listeners
     const onPointerUp = () => {
       document.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('pointerup', onPointerUp);
@@ -118,7 +116,7 @@
     assistantButtonWrapper.addEventListener('pointerdown', onPointerDown);
     assistantButton.addEventListener('click', handleButtonClick);
 
-    // Handles assistant button click events.
+    // Handles assistant button click events
     function handleButtonClick() {
       if (isMoving) {
         return;

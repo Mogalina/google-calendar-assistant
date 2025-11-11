@@ -20,6 +20,7 @@
   font-size: 0;
   transition: filter 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
   box-shadow: 0 4px 8px rgba(43, 34, 34, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
 }
 
 /* Hover effect adds subtle highlight and scale for better feedback */
