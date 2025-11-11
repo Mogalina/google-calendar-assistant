@@ -4,87 +4,121 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Chat Panel</title>
+    <link rel="stylesheet" href="../chat-panel/style/global.css" />
+    <link rel="stylesheet" href="../chat-panel/style/panel.css" />
   </head>
 
   <body>
-    <div>
-      <div>
-        <div>
-          <div>
-            <div>
-              <img src="../../assets/images/gemini-logo.png" />
+    <div class="panel-container">
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="chat-header-title">
+            <div class="chat-icon-container">
+              <img class="chat-icon" src="../../assets/images/gemini-logo.png" />
             </div>
-            <div>
+            <div class="chat-title">
               <p>Google Calendar Assistant</p>
             </div>
           </div>
 
-          <div>
-            <button type="button">
-              <img src="../../assets/images/reset-icon.png" />
-              <span>Clear Chat</span>
+          <div class="chat-header-buttons">
+            <button
+              type="button"
+              class="clear-chat-button tooltip-header"
+              id="clear-chat-button"
+            >
+              <img
+                class="bin-button-icon"
+                src="../../assets/images/reset-icon.png"
+              />
+              <span class="tooltip-text-header">Clear Chat</span>
             </button>
-
-            <button type="button">
-              <img src="../../assets/images/resize-icon.png" />
-              <span>Resize Window</span>
+            <button
+              type="button"
+              class="resize-chat-button tooltip-header"
+              id="resize-chat-button"
+            >
+              <img
+                class="resize-button-icon"
+                src="../../assets/images/resize-icon.png"
+              />
+              <span class="tooltip-text-header">Resize Window</span>
             </button>
-
-            <button type="button">
-              <img src="../../assets/images/close-icon.png" />
-              <span>Close Chat</span>
+            <button
+              type="button"
+              class="close-chat-button tooltip-header"
+              id="close-chat-button"
+            >
+              <img
+                class="close-button-icon"
+                src="../../assets/images/close-icon.png"
+              />
+              <span class="tooltip-text-header">Close<br />Chat</span>
             </button>
           </div>
         </div>
 
-        <div>
-          <div>
-            <div>
-              <img src="../../assets/images/gemini-chat-bot-logo.png" />
-            </div>
-            <div>
-              <div>Hello! How can I help you today?</div>
-              <div></div>
-            </div>
-          </div>
-        </div>
+        <div class="chat-messages" id="chat-messages"></div>
 
-        <div>
-          <form>
-            <div>
-              <button type="button">
-                <img src="../../assets/images/plus-icon.png" />
-                <span>Select<br />Instrument</span>
+        <div class="chat-input-area">
+          <form class="input-form" id="chat-form">
+            <div class="dropdown" id="mode-dropdown">
+              <button type="button" class="dropdown-btn tooltip" id="mode-btn">
+                <img
+                  class="dropdown-btn-icon"
+                  src="../../assets/images/plus-icon.png"
+                />
+                <span class="tooltip-text">Select<br />Instrument</span>
               </button>
 
-              <div>
-                <h3>Choose an instrument</h3>
-
-                <button type="button" data-mode="SmartAdd">
-                  <div>
-                    <img src="../../assets/images/brain-icon.png" />
+              <div class="dropdown-menu" id="drawer-menu">
+                <h3 class="dropdown-title">Choose an instrument</h3>
+                <button
+                  type="button"
+                  data-mode="SmartAdd"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="../../assets/images/brain-icon.png"
+                    />
                   </div>
-                  <div>
+                  <div class="drawer-text">
                     <h3>Smart add</h3>
                     <p>Quickly create events using natural language.</p>
                   </div>
                 </button>
 
-                <button type="button" data-mode="Suggestion">
-                  <div>
-                    <img src="../../assets/images/light-bulb-icon.png" />
+                <button
+                  type="button"
+                  data-mode="Suggestion"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="../../assets/images/light-bulb-icon.png"
+                    />
                   </div>
-                  <div>
+                  <div class="drawer-text">
                     <h3>Suggestion</h3>
                     <p>Get event ideas or optimize your schedule.</p>
                   </div>
                 </button>
 
-                <button type="button" data-mode="Reschedule">
-                  <div>
-                    <img src="../../assets/images/calendar-plus-icon.png" />
+                <button
+                  type="button"
+                  data-mode="Reschedule"
+                  class="drawer-option"
+                >
+                  <div class="drawer-icon">
+                    <img
+                      class="drawer-icon-image"
+                      src="../../assets/images/calendar-plus-icon.png"
+                    />
                   </div>
-                  <div>
+                  <div class="drawer-text">
                     <h3>Reschedule</h3>
                     <p>Find new times for your existing events.</p>
                   </div>
@@ -92,17 +126,31 @@
               </div>
             </div>
 
-            <div>
-              <textarea placeholder="Ask me anything" rows="1"></textarea>
+            <div class="input-wrapper">
+              <textarea
+                class="chat-textarea"
+                id="chat-input"
+                placeholder="Ask me anything"
+                rows="1"
+              ></textarea>
             </div>
 
-            <button type="submit">
-              <img src="../../assets/images/microphone-icon.png" />
-              <span>Dictate</span>
+            <button
+              type="submit"
+              class="action-button tooltip"
+              id="action-button"
+            >
+              <img
+                class="action-button-icon"
+                src="../../assets/images/microphone-icon.png"
+                id="action-icon"
+              />
+              <span class="tooltip-text" id="tooltip-text">Dictate</span>
             </button>
           </form>
         </div>
       </div>
     </div>
+    <script src="../../scripts/panel.js"></script>
   </body>
 </html>
