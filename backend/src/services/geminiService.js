@@ -231,6 +231,7 @@ async function handleGatherContext(accessToken, params) {
           contextResults.push(`Search results for "${op.query}": No matching events found.`);
         }
       }
+      
     } catch (error) {
       contextResults.push(`Error in ${op.type} operation: ${error.message}`);
     }
@@ -306,11 +307,11 @@ export async function continueChat(input, history = [], accessToken = null, user
 
     let calendarResult = null;
     
-    // Handle context gathering specially - it needs a follow-up
+    // Handle context gathering specially
     if (action === "gather_context") {
       const contextData = await handleGatherContext(accessToken, params);
       
-      // Now make a second call to Gemini with the gathered context
+      // Call Gemini with the gathered context
       const followUpInput = `
         Based on the user's request: "${input}"
         
@@ -363,7 +364,7 @@ export async function continueChat(input, history = [], accessToken = null, user
       };
     }
     
-    // Execute single-phase actions as before
+    // Execute the appropriate calendar action
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone);
