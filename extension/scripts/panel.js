@@ -11,8 +11,11 @@
   // Wait for the config
   window.addEventListener("message", (event) => {
     if (event.source !== window) return;
-    if (event.data?.type === "CONFIG_DATA") {
-      const CONFIG = event.data.data;
+
+    const { type, data, payload } = event.data || {};
+
+    if (type === "CONFIG_DATA") {
+      const CONFIG = data;
 
       if (!CONFIG || !CONFIG.API_URL) {
         console.error("Invalid CONFIG:", CONFIG);
@@ -69,12 +72,18 @@
         window.top.postMessage({ type }, "*");
       }
 
+      async function saveMessages(messages) {
+        window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
+      }
+
+      const existing = [];
+
       /**
        * Creates and appends a chat message bubble to the chat log.
        * @param {"user" | "ai"} sender - The sender type ("user" or "ai").
        * @param {string} text - The message text content.
        */
-      function appendMessage(sender, text, options = {}) {
+      async function appendMessage(sender, text, options = {}) {
         if (!chatMessages) return;
 
         const msg = document.createElement("div");
@@ -111,6 +120,12 @@
           top: chatMessages.scrollHeight,
           behavior: "smooth",
         });
+
+        // Save to session storage
+        if (text.trim() !== "") {
+          existing.push({ sender, text });
+          await saveMessages(existing);
+        }
       }
 
       /**
@@ -157,6 +172,8 @@
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = aiMessage;
               lastAiBubble.style.color = "inherit";
+              existing.push({ sender: "ai", text: aiMessage });
+              await saveMessages(existing);
             } else {
               appendMessage("ai", aiMessage);
             }
@@ -173,7 +190,6 @@
               appendMessage("ai", "Hmmm...Something went wrong!");
             }
           }
-          // setTimeout(() => appendMessage("ai", "Got it! (demo response)"), 800);
         });
       }
 
