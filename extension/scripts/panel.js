@@ -23,7 +23,7 @@
         console.log("Panel already initialized, skipping...");
         return;
       }
-      
+
       isInitialized = true;
 
       const CONFIG = data;
@@ -113,8 +113,7 @@
       async function initializeChat() {
         const messages = await loadMessages();
 
-        const filteredMessages =
-          messages?.filter((msg) => msg.text) || [];
+        const filteredMessages = messages?.filter((msg) => msg.text) || [];
 
         if (filteredMessages.length > 0) {
           // Clear existing messages first
@@ -198,10 +197,7 @@
         });
 
         // Save to session storage
-        if (
-          !options.skipSave &&
-          text.trim() !== ""
-        ) {
+        if (!options.skipSave && text.trim() !== "") {
           const existing = (await loadMessages()) || [];
           existing.push({ sender, text, timestamp: timestamp });
           await saveMessages(existing);
@@ -295,11 +291,25 @@
        * Clears chat messages except for the initial one.
        */
       if (clearChatButton) {
-        clearChatButton.addEventListener("click", (e) => {
+        clearChatButton.addEventListener("click", async (e) => {
           e.preventDefault();
           console.log("Clear chat clicked");
+
+          // Clear all messages from DOM
           chatMessages.querySelectorAll(".message").forEach((msg, i) => {
-            if (i > 0) msg.remove();
+            msg.remove();
+          });
+
+          // Clear storage completely
+          await saveMessages([]);
+
+          // Also send explicit clear message to ensure storage is wiped
+          window.postMessage({ type: "CLEAR_MESSAGES" }, "*");
+
+          // Re-add welcome message
+          await appendMessage("ai", WELCOME_MESSAGE, {
+            skipSave: true,
+            timestamp: new Date().toISOString(),
           });
         });
       }

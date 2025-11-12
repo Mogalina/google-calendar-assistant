@@ -38,6 +38,9 @@
       case "LOAD_MESSAGES":
         loadMessages();
         break;
+      case "CLEAR_MESSAGES":
+        clearMessages();
+        break;
     }
   });
 
@@ -69,6 +72,16 @@
           resolve([]);
         }
       });
+    });
+  }
+
+  async function clearMessages() {
+    chrome.runtime.sendMessage({ action: "CLEAR_MESSAGES" }, (response) => {
+      if (response?.status === "success") {
+        console.log("Messages cleared successfully");
+      } else {
+        console.error("Failed to clear messages:", response?.message);
+      }
     });
   }
 
