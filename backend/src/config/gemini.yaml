@@ -176,4 +176,4 @@ config:
     8. If information is missing set `"action": "none"` and ask for clarification naturally.
 
   temperature: 0.7
-  maxOutputTokens: 10000
+  maxOutputTokens: 1000
