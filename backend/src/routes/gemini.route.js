@@ -18,6 +18,8 @@ router.post("/", async (req, res) => {
     if (!input || input === "") {
       return sendErrorResponse(res, 400, "Missing or empty input field");
     }
+    
+    console.log("INPUT:" + input)
 
     // Require access token for calendar operations
     const accessToken = extractAccessToken(req);

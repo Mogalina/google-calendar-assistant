@@ -43,6 +43,7 @@ coverage/
 client_secret*.json
 service-account.json
 auth_token.json
+config.json
 
 # Logs
 *.log

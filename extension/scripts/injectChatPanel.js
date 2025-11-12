@@ -2,7 +2,7 @@
  * Dynamically injects a chat panel user interface into the current webpage.
  * Runs as an immediately invoked function to prevent global namespace pollution.
  */
-(() => {
+(async () => {
   // Prevents multiple injections of the chat panel
   if (window.__assistantChatPanelInjected) {
     return;
@@ -20,6 +20,9 @@
     }
 
     switch (type) {
+      case "GET_CONFIG":
+        useConfig();
+        break;
       case "ASSISTANT_BUTTON_CLICK":
         toggleChatPanel();
         break;
@@ -32,10 +35,24 @@
     }
   });
 
+  async function useConfig() {
+    try {
+      const configUrl = chrome.runtime.getURL(
+        "components/chat-panel/config.json"
+      );
+      const config = await fetch(configUrl).then((r) => r.json());
+
+      // Send it back to the page
+      window.postMessage({ type: "CONFIG_DATA", data: config }, "*");
+    } catch (err) {
+      console.error("Failed to load CONFIG:", err);
+    }
+  }
+
   /**
    * Creates and injects the chat panel host element and shadow root.
    * Loads assets from the extension package, ensuring valid paths.
-   * 
+   *
    * @returns {HTMLElement} The chat panel host element.
    */
   function createChatPanel() {
@@ -84,11 +101,11 @@
 
   /**
    * Injects HTML panel content.
-   * 
+   *
    * @param {string} html - Raw HTML content of the panel.
    * @param {ShadowRoot} shadow - Shadow root of the panel.
-   */  
-  function injectPanelHTML(html, shadow) {
+   */
+  async function injectPanelHTML(html, shadow) {
     const temp = document.createElement("div");
     temp.innerHTML = html;
 
@@ -114,14 +131,15 @@
     shadow._contentRoot = temp.querySelector("html") || temp;
 
     // Append required CSS files from extension
-    ["components/chat-panel/global.css", "components/chat-panel/panel.css"].forEach(
-      (file) => {
-        const link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = chrome.runtime.getURL(file);
-        shadow.appendChild(link);
-      }
-    );
+    [
+      "components/chat-panel/global.css",
+      "components/chat-panel/panel.css",
+    ].forEach((file) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = chrome.runtime.getURL(file);
+      shadow.appendChild(link);
+    });
 
     // Assign a unique identifier for this panel instance
     panelHost.setAttribute("data-panel-id", Date.now().toString());
@@ -129,13 +147,25 @@
       "assets/images/gemini-chat-bot-logo.png"
     );
 
+    // Load config from the extension
+    const configUrl = chrome.runtime.getURL(
+      "components/chat-panel/config.json"
+    );
+    const config = await fetch(configUrl).then((res) => res.json());
+
+    shadow.host.CONFIG = config;
+
     // Inject panel script
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("scripts/panel.js");
-    script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
+    script.setAttribute(
+      "data-panel-id",
+      panelHost.getAttribute("data-panel-id")
+    );
 
     script.onload = () => console.log("Panel script loaded successfully");
-    script.onerror = (err) => console.error("Failed to load panel script:", err);
+    script.onerror = (err) =>
+      console.error("Failed to load panel script:", err);
 
     shadow.appendChild(script);
   }
@@ -201,7 +231,7 @@
     if (!panelHost) {
       return;
     }
-    
+
     const shadow = panelHost.shadowRoot || panelHost._shadowRoot;
     if (!shadow) {
       return;

@@ -4,12 +4,15 @@ import dotenv from "dotenv";
 import geminiRouter from "./routes/gemini.route.js";
 import calendarRouter from "./routes/calendar.route.js";
 import oauthRouter from "./routes/oauth.route.js";
+import cors from "cors";
 
 // Load environment variables
 dotenv.config();
 
 // Create the main application instance
 const app = express();
+
+app.use(cors({ origin: "*" }));
 
 // Use middleware to parse incoming request bodies
 app.use(bodyParser.json());

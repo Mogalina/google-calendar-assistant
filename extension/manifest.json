@@ -45,6 +45,7 @@
         "assets/*",
         "assets/**/*",
         "icons/*",
+        "components/chat-panel/config.json",
         "scripts/panel.js"
       ],
       "matches": [
