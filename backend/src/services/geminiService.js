@@ -34,9 +34,32 @@ try {
     config: { 
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
       Your sole purpose is to analyze the user's existing calendar events and their requests 
-      to suggest the most efficient, conflict-free, and productive schedule changes.`,
+      to suggest the most efficient, conflict-free, and productive schedule changes.
+      
+      When you need calendar context to fulfill a request:
+      1. First, use "gather_context" action to search or list events
+      2. After receiving the context, use the appropriate action (create/update/delete)
+      
+      Response format:
+      {
+        "action": "gather_context|create|update|delete|list|search|none",
+        "parameters": {...},
+        "response": "Your message to the user"
+      }
+      
+      For gather_context action, use:
+      {
+        "action": "gather_context",
+        "parameters": {
+          "operations": [
+            {"type": "list", "maxResults": 10, "start": "2025-11-15T00:00:00Z", "end": "2025-11-16T00:00:00Z"},
+            {"type": "search", "query": "meeting", "maxResults": 5}
+          ]
+        },
+        "response": "Let me check your calendar..."
+      }`,
       temperature: 0.7,
-      maxOutputTokens: 600
+      maxOutputTokens: 800
     }
   };
 }
@@ -77,18 +100,19 @@ async function handleCreate(accessToken, params, userTimeZone) {
  */
 async function handleList(accessToken, params, geminiResponse) {
   const calendarResult = await listEvents(accessToken, {
-    maxResults: params.maxResults || 10
+    maxResults: params.maxResults || 10,
+    start: params.start,
+    end: params.end
   });
 
   if (calendarResult?.length > 0) {
     const eventList = calendarResult
       .map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()}`;
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
       })
       .join("\n");
     geminiResponse.response += `\n\n${eventList}`;
-
   } else {
     geminiResponse.response += "\n\nNo upcoming events found.";
   }
@@ -120,7 +144,6 @@ async function handleSearch(accessToken, params, geminiResponse) {
       })
       .join("\n");
     geminiResponse.response += `\n\nFound ${calendarResult.length} events:\n${eventList}`;
-
   } else {
     geminiResponse.response += `\n\nNo events found matching "${params.query}".`;
   }
@@ -167,13 +190,64 @@ async function handleDelete(accessToken, params) {
 }
 
 /**
+ * Gathers calendar context by executing multiple search/list operations.
+ * Returns formatted context string to be sent back to Gemini.
+ */
+async function handleGatherContext(accessToken, params) {
+  const operations = params.operations || [];
+  const contextResults = [];
+
+  for (const op of operations) {
+    try {
+      if (op.type === "list") {
+        const events = await listEvents(accessToken, {
+          maxResults: op.maxResults || 10,
+          start: op.start,
+          end: op.end
+        });
+
+        if (events.length > 0) {
+          const eventList = events.map((event, i) => {
+            const start = event.start?.dateTime || event.start?.date;
+            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+          }).join("\n");
+          contextResults.push(`List results (${events.length} events):\n${eventList}`);
+        } else {
+          contextResults.push("List results: No events found in the specified time range.");
+        }
+
+      } else if (op.type === "search") {
+        const events = await searchEvents(accessToken, op.query, {
+          maxResults: op.maxResults || 10
+        });
+
+        if (events.length > 0) {
+          const eventList = events.map((event, i) => {
+            const start = event.start?.dateTime || event.start?.date;
+            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+          }).join("\n");
+          contextResults.push(`Search results for "${op.query}" (${events.length} events):\n${eventList}`);
+        } else {
+          contextResults.push(`Search results for "${op.query}": No matching events found.`);
+        }
+      }
+    } catch (error) {
+      contextResults.push(`Error in ${op.type} operation: ${error.message}`);
+    }
+  }
+
+  return contextResults.join("\n\n");
+}
+
+/**
  * Sends a message to Gemini, continuing a conversation based on the provided history.
+ * Now supports two-phase execution for context gathering.
  * 
  * @param {string} input - The new user prompt.
  * @param {Array<object>} history - The full conversation history sent by the client.
  * @param {string|null} accessToken - Optional OAuth2 access token for calendar operations.
  * @param {string} userTimeZone - The user's current timezone.
- * @returns {Promise<{output: string, action?: string, calendarResult?: any}>} 
+ * @returns {Promise<{output: string, action?: string, calendarResult?: any, needsFollowup?: boolean}>} 
  */
 export async function continueChat(input, history = [], accessToken = null, userTimeZone = "UTC") {
   // Require the `input` field to be present
@@ -200,8 +274,6 @@ export async function continueChat(input, history = [], accessToken = null, user
     // Create a new, temporary chat session for this specific request
     const chat = client.chats.create({
       ...geminiConfig,
-      // Pre-load the session with the history received from the client
-      // This is what maintains the conversational context
       history: history 
     });
 
@@ -234,7 +306,64 @@ export async function continueChat(input, history = [], accessToken = null, user
 
     let calendarResult = null;
     
-    // Execute the appropriate calendar action
+    // Handle context gathering specially - it needs a follow-up
+    if (action === "gather_context") {
+      const contextData = await handleGatherContext(accessToken, params);
+      
+      // Now make a second call to Gemini with the gathered context
+      const followUpInput = `
+        Based on the user's request: "${input}"
+        
+        Here is the calendar context you requested:
+        ${contextData}
+        
+        Now, please provide the final action to take (create/update/delete/none) based on this context.
+      `;
+
+      const followUpResult = await chat.sendMessage({ message: followUpInput });
+      const followUpText = followUpResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      
+      if (!followUpText) {
+        throw new Error("Gemini returned empty response in follow-up");
+      }
+
+      // Parse the follow-up response
+      const cleanedFollowUp = followUpText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      const followUpResponse = JSON.parse(cleanedFollowUp);
+      
+      const finalAction = followUpResponse.action || "none";
+      const finalParams = followUpResponse.parameters || {};
+
+      // Execute the final action
+      switch (finalAction) {
+        case "create":
+          calendarResult = await handleCreate(accessToken, finalParams, userTimeZone);
+          break;
+        case "update":
+          calendarResult = await handleUpdate(accessToken, finalParams);
+          break;
+        case "delete":
+          calendarResult = await handleDelete(accessToken, finalParams);
+          break;
+        case "list":
+          calendarResult = await handleList(accessToken, finalParams, followUpResponse);
+          break;
+        case "search":
+          calendarResult = await handleSearch(accessToken, finalParams, followUpResponse);
+          break;
+        case "none":
+        default:
+          break;
+      }
+
+      return {
+        output: followUpResponse.response,
+        action: finalAction,
+        calendarResult,
+      };
+    }
+    
+    // Execute single-phase actions as before
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone);
