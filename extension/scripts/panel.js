@@ -5,6 +5,9 @@
  */
 
 (async () => {
+  // Prevent double initialization
+  let isInitialized = false;
+
   // Ask the content script for config
   window.postMessage({ type: "GET_CONFIG" }, "*");
 
@@ -15,6 +18,14 @@
     const { type, data, payload } = event.data || {};
 
     if (type === "CONFIG_DATA") {
+      // Prevent multiple initializations
+      if (isInitialized) {
+        console.log("Panel already initialized, skipping...");
+        return;
+      }
+      
+      isInitialized = true;
+
       const CONFIG = data;
 
       if (!CONFIG || !CONFIG.API_URL) {
@@ -76,7 +87,71 @@
         window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
       }
 
-      const existing = [];
+      async function loadMessages() {
+        return new Promise((resolve) => {
+          function listener(event) {
+            if (event.source !== window) return;
+            if (event.data?.type === "LOADED_MESSAGES") {
+              window.removeEventListener("message", listener);
+              resolve(event.data.payload);
+            }
+          }
+          window.addEventListener("message", listener);
+          window.postMessage({ type: "LOAD_MESSAGES" }, "*");
+        });
+      }
+
+      /**
+       * Constant for welcome message
+       */
+      const WELCOME_MESSAGE =
+        "Hello! I'm your Google Calendar assistant. How can I help you today?";
+
+      /**
+       * Initialize chat by loading previous messages or showing welcome message
+       */
+      async function initializeChat() {
+        const messages = await loadMessages();
+
+        const filteredMessages =
+          messages?.filter((msg) => msg.text) || [];
+
+        if (filteredMessages.length > 0) {
+          // Clear existing messages first
+          const existingMessages = chatMessages.querySelectorAll(".message");
+          existingMessages.forEach((msg) => msg.remove());
+
+          // Append all stored messages with their original timestamps
+          for (const msg of filteredMessages) {
+            await appendMessage(msg.sender, msg.text, {
+              skipSave: true,
+              timestamp: msg.timestamp,
+            });
+          }
+        } else {
+          // Show initial welcome message
+          await appendMessage("ai", WELCOME_MESSAGE, {
+            skipSave: false,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
+      /**
+       * Formats conversation history for Gemini API
+       * @returns {Array} Formatted history array
+       */
+      async function getConversationHistory() {
+        const messages = await loadMessages();
+        if (!messages || messages.length === 0) return [];
+
+        return messages
+          .filter((msg) => msg.text !== WELCOME_MESSAGE)
+          .map((msg) => ({
+            role: msg.sender === "user" ? "user" : "assistant",
+            parts: [{ text: msg.text }],
+          }));
+      }
 
       /**
        * Creates and appends a chat message bubble to the chat log.
@@ -97,7 +172,6 @@
 
         const bubble = document.createElement("div");
         bubble.classList.add("message-bubble");
-        bubble.textContent = text;
 
         if (options.pulse) {
           bubble.classList.add("pulse");
@@ -110,7 +184,9 @@
 
         const time = document.createElement("div");
         time.classList.add("message-time");
-        time.textContent = new Date().toLocaleTimeString();
+        const timestamp = options.timestamp || new Date().toISOString();
+        const timeObj = new Date(timestamp);
+        time.textContent = timeObj.toLocaleTimeString();
 
         content.append(bubble, time);
         msg.append(avatar, content);
@@ -122,8 +198,12 @@
         });
 
         // Save to session storage
-        if (text.trim() !== "") {
-          existing.push({ sender, text });
+        if (
+          !options.skipSave &&
+          text.trim() !== ""
+        ) {
+          const existing = (await loadMessages()) || [];
+          existing.push({ sender, text, timestamp: timestamp });
           await saveMessages(existing);
         }
       }
@@ -141,7 +221,7 @@
           appendMessage("user", msg);
           chatInput.value = "";
 
-          const history = "";
+          const history = await getConversationHistory();
           appendMessage("ai", "", { pulse: true });
 
           try {
@@ -153,7 +233,7 @@
               },
               body: JSON.stringify({
                 input: msg,
-                history,
+                history: history,
                 timezone: "Europe/Bucharest",
               }),
             });
@@ -172,7 +252,13 @@
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = aiMessage;
               lastAiBubble.style.color = "inherit";
-              existing.push({ sender: "ai", text: aiMessage });
+
+              const existing = (await loadMessages()) || [];
+              existing.push({
+                sender: "ai",
+                text: aiMessage,
+                timestamp: new Date().toISOString(),
+              });
               await saveMessages(existing);
             } else {
               appendMessage("ai", aiMessage);
@@ -243,6 +329,7 @@
         });
       }
 
+      initializeChat();
       /**
        * Activates event containment within the ShadowRoot.
        * Prevents chat events from leaking to the main document context.
