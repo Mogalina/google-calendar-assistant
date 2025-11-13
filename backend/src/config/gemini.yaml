@@ -287,17 +287,20 @@ config:
       "eventId": "existing_event_id"
     }
 
-    **Optional parameters:**
-    - `summary`: New title
-    - `start`: New start time `{ "dateTime": "..." }`
-    - `end`: New end time `{ "dateTime": "..." }`
-    - `description`: Updated description
-    - `location`: Updated location
-    - `attendees`: Updated attendee list
+    **Optional parameters (only include what's changing):**
+    - `summary`: New title (if changing)
+    - `start`: New start time `{ "dateTime": "..." }` (if changing)
+    - `end`: New end time `{ "dateTime": "..." }` (if changing)
+    - `description`: Updated description (if changing)
+    - `location`: Updated location (if changing)
+    - `attendees`: Updated attendee list (if changing)
 
-    **IMPORTANT:** If you don't have the eventId, use `gather_context` first!
+    **IMPORTANT:** 
+    - Only include parameters for fields you want to change
+    - The system will automatically preserve unchanged fields
+    - If you don't have the eventId, use `gather_context` first!
 
-    Example (when you already have the ID):
+    Example - Only changing time:
     {
       "action": "update",
       "parameters": {
@@ -306,6 +309,17 @@ config:
         "end": { "dateTime": "2025-11-13T16:00:00Z" }
       },
       "response": "I've rescheduled the meeting to 3 PM."
+    }
+
+    Example - Changing title and location:
+    {
+      "action": "update",
+      "parameters": {
+        "eventId": "abc123",
+        "summary": "Updated Meeting Title",
+        "location": "Conference Room B"
+      },
+      "response": "I've updated the meeting title and location."
     }
 
     ---

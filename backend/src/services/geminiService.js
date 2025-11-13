@@ -8,6 +8,7 @@ import {
   updateEvent,
   deleteEvent,
   searchEvents,
+  getEvent
 } from "./calendarService.js";
 
 dotenv.config();
@@ -34,30 +35,7 @@ try {
     config: { 
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
       Your sole purpose is to analyze the user's existing calendar events and their requests 
-      to suggest the most efficient, conflict-free, and productive schedule changes.
-      
-      When you need calendar context to fulfill a request:
-      1. First, use "gather_context" action to search or list events
-      2. After receiving the context, use the appropriate action (create/update/delete)
-      
-      Response format:
-      {
-        "action": "gather_context|create|update|delete|list|search|none",
-        "parameters": {...},
-        "response": "Your message to the user"
-      }
-      
-      For gather_context action, use:
-      {
-        "action": "gather_context",
-        "parameters": {
-          "operations": [
-            {"type": "list", "maxResults": 10, "start": "2025-11-15T00:00:00Z", "end": "2025-11-16T00:00:00Z"},
-            {"type": "search", "query": "meeting", "maxResults": 5}
-          ]
-        },
-        "response": "Let me check your calendar..."
-      }`,
+      to suggest the most efficient, conflict-free, and productive schedule changes.`,
       temperature: 0.7,
       maxOutputTokens: 800
     }
@@ -153,24 +131,39 @@ async function handleSearch(accessToken, params, geminiResponse) {
 
 /**
  * Updates an existing calendar event.
+ * Fetches the current event first and merges with updates to preserve existing data.
  */
-async function handleUpdate(accessToken, params) {
+async function handleUpdate(accessToken, params, userTimeZone) {
   if (!params.eventId) {
     throw new Error("Event identifier is required for updates");
+  }
+
+  // Fetch the current event to preserve existing data
+  const currentEvent = await getEvent(accessToken, params.eventId);
+
+  // Merge updates with existing event data
+  const updateData = {
+    summary: params.summary ?? currentEvent.summary,
+    start: params.start ?? currentEvent.start,
+    end: params.end ?? currentEvent.end,
+    description: params.description ?? currentEvent.description,
+    location: params.location ?? currentEvent.location,
+    attendees: params.attendees ?? currentEvent.attendees,
+  };
+
+  // Attach timezone to start and end if being updated and missing timezone
+  if (params.start && updateData.start?.dateTime && !updateData.start.timeZone) {
+    updateData.start.timeZone = userTimeZone;
+  }
+  if (params.end && updateData.end?.dateTime && !updateData.end.timeZone) {
+    updateData.end.timeZone = userTimeZone;
   }
 
   return await updateEvent(
     accessToken,
     params.eventId,
     "primary",
-    {
-      summary: params.summary,
-      start: params.start,
-      end: params.end,
-      description: params.description,
-      location: params.location,
-      attendees: params.attendees,
-    }
+    updateData
   );
 }
 
@@ -231,6 +224,7 @@ async function handleGatherContext(accessToken, params) {
           contextResults.push(`Search results for "${op.query}": No matching events found.`);
         }
       }
+
     } catch (error) {
       contextResults.push(`Error in ${op.type} operation: ${error.message}`);
     }
@@ -340,7 +334,7 @@ export async function continueChat(input, history = [], accessToken = null, user
           calendarResult = await handleCreate(accessToken, finalParams, userTimeZone);
           break;
         case "update":
-          calendarResult = await handleUpdate(accessToken, finalParams);
+          calendarResult = await handleUpdate(accessToken, finalParams, userTimeZone);
           break;
         case "delete":
           calendarResult = await handleDelete(accessToken, finalParams);
@@ -375,7 +369,7 @@ export async function continueChat(input, history = [], accessToken = null, user
         calendarResult = await handleSearch(accessToken, params, geminiResponse);
         break;
       case "update":
-        calendarResult = await handleUpdate(accessToken, params);
+        calendarResult = await handleUpdate(accessToken, params, userTimeZone);
         break;
       case "delete":
         calendarResult = await handleDelete(accessToken, params);

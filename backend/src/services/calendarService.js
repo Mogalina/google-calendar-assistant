@@ -15,6 +15,30 @@ export function createCalendarClient(accessToken) {
 }
 
 /**
+ * Gets a single event by identifier.
+ * 
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} eventId - Identifier of the event.
+ * @param {string} calendarId - Calendar identifier.
+ * @returns {Promise<Object>} Event object.
+ */
+export async function getEvent(accessToken, eventId, calendarId = "primary") {
+  if (!eventId) {
+    throw new Error("Event identifier is required.");
+  }
+
+  // Create an authenticated Google Calendar client using user's access token
+  const calendar = createCalendarClient(accessToken);
+  
+  const response = await calendar.events.get({
+    calendarId,
+    eventId
+  });
+
+  return response.data;
+}
+
+/**
  * Creates a new event in the user's calendar.
  * Validates event structure and inserts it using Google Calendar API.
  * 
