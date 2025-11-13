@@ -16,7 +16,7 @@
 
   // Listen for messages from extension or host page
   window.addEventListener("message", (event) => {
-    const { type } = event.data || {};
+    const { type, payload } = event.data || {};
     if (!type) {
       return;
     }
@@ -34,8 +34,15 @@
       case "RESIZE_CHAT_PANEL":
         resizeChatPanel();
         break;
+      case "SAVE_MESSAGES":
+        saveMessages(payload);
+        break;
     }
   });
+
+  async function saveMessages(messages) {
+    chrome.runtime.sendMessage({ action: "SAVE_MESSAGES", payload: messages });
+  }
 
   async function useConfig() {
     try {

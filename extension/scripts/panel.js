@@ -65,6 +65,12 @@
         window.top.postMessage({ type }, "*");
       }
 
+      async function saveMessages(messages) {
+        window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
+      }
+
+      const existing = [];
+
       /**
        * Appends a message to the chat interface.
        * 
@@ -72,7 +78,7 @@
        * @param {string} text - The message content.
        * @param {object} [options] - Additional options.
        */
-      function appendMessage(sender, text, options = {}) {
+      async function appendMessage(sender, text, options = {}) {
         if (!chatMessages) {
           return;
         }
@@ -115,6 +121,12 @@
           top: chatMessages.scrollHeight,
           behavior: "smooth",
         });
+
+        // Save to session storage
+        if (text.trim() !== "") {
+          existing.push({ sender, text });
+          await saveMessages(existing);
+        }
       }
 
       // Handle chat form submission when user sends message
@@ -162,6 +174,8 @@
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = aiMessage;
               lastAiBubble.style.color = "inherit";
+              existing.push({ sender: "ai", text: aiMessage });
+              await saveMessages(existing);
             } else {
               appendMessage("ai", aiMessage);
             }
