@@ -62,12 +62,32 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     return true; // Keep the message channel open for async response
   }
 
+  if (request.action === "CLEAR_MESSAGES") {
+    chrome.storage.session
+      .remove("chatMessages")
+      .then(() => {
+        console.log("Chat messages cleared from session storage");
+        sendResponse({
+          status: "success",
+          message: "Messages cleared from extension session storage.",
+        });
+      })
+      .catch((error) => {
+        console.error("Error clearing messages:", error);
+        sendResponse({
+          status: "error",
+          message: "Failed to clear messages.",
+        });
+      });
+    return true; // Keep the message channel open for async response
+  }
+
   // Handle unknown actions
   console.warn("Background script: Unknown action:", request.action);
   sendResponse({
     status: "error",
     message: `Unknown action: ${request.action}`,
   });
-  
+
   return false;
 });

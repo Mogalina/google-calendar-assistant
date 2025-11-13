@@ -7,6 +7,9 @@
  */
 
 (async () => {
+  // Prevent double initialization
+  let isInitialized = false;
+
   // Request configuration data from the main window or content script
   window.postMessage({ type: "GET_CONFIG" }, "*");
 
@@ -19,9 +22,16 @@
     const { type, data, payload } = event.data || {};
 
     if (type === "CONFIG_DATA") {
+      // Prevent multiple initializations
+      if (isInitialized) {
+        return;
+      }
+      isInitialized = true;
+
       const CONFIG = data;
+
       if (!CONFIG || !CONFIG.API_URL) {
-        console.error("Invalid configuration:", CONFIG);
+        console.error("Invalid CONFIG:", CONFIG);
         return;
       }
 
@@ -31,10 +41,10 @@
         const host = document.querySelector("#assistant-chat-panel");
         root = host?.shadowRoot || host?._shadowRoot;
       }
-
+      
       // If no shadow root is found, initialization fails
       if (!(root instanceof ShadowRoot)) {
-        console.error("No valid shadow root found");
+        console.error("Panel.js: No valid shadow root found");
         throw new Error("Cannot initialize chat panel");
       }
 
@@ -52,7 +62,7 @@
       const resizeChatButton = get("resize-chat-button");
       const initialTimeEl = get("initial-time");
 
-      // Set initial timestamp
+       // Set initial timestamp
       if (initialTimeEl) {
         initialTimeEl.textContent = new Date().toLocaleTimeString();
       }
@@ -60,6 +70,8 @@
       /**
        * Sends a custom message from this script to the top-level window.
        * Used to communicate with other parts of the extension.
+       * 
+       * @param {string} type - The message type identifier.
        */
       function sendMessageToMainWindow(type) {
         window.top.postMessage({ type }, "*");
@@ -69,7 +81,66 @@
         window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
       }
 
-      const existing = [];
+      async function loadMessages() {
+        return new Promise((resolve) => {
+          function listener(event) {
+            if (event.source !== window) return;
+            if (event.data?.type === "LOADED_MESSAGES") {
+              window.removeEventListener("message", listener);
+              resolve(event.data.payload);
+            }
+          }
+          window.addEventListener("message", listener);
+          window.postMessage({ type: "LOAD_MESSAGES" }, "*");
+        });
+      }
+
+      const WELCOME_MESSAGE = "Hello! I'm your Google Calendar assistant. How can I help you today?";
+
+      // Initialize chat by loading previous messages or showing welcome message
+      async function initializeChat() {
+        const messages = await loadMessages();
+
+        const filteredMessages = messages?.filter((msg) => msg.text) || [];
+
+        if (filteredMessages.length > 0) {
+          // Clear existing messages first
+          const existingMessages = chatMessages.querySelectorAll(".message");
+          existingMessages.forEach((msg) => msg.remove());
+
+          // Append all stored messages with their original timestamps
+          for (const msg of filteredMessages) {
+            await appendMessage(msg.sender, msg.text, {
+              skipSave: true,
+              timestamp: msg.timestamp,
+            });
+          }
+        } else {
+          // Show initial welcome message
+          await appendMessage("ai", WELCOME_MESSAGE, {
+            skipSave: false,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
+      /**
+       * Formats conversation history for Gemini API
+       * @returns {Array} Formatted history array
+       */
+      async function getConversationHistory() {
+        const messages = await loadMessages();
+        if (!messages || messages.length === 0) {
+          return [];
+        }
+
+        return messages
+          .filter((msg) => msg.text !== WELCOME_MESSAGE)
+          .map((msg) => ({
+            role: msg.sender === "user" ? "user" : "assistant",
+            parts: [{ text: msg.text }],
+          }));
+      }
 
       /**
        * Appends a message to the chat interface.
@@ -83,7 +154,6 @@
           return;
         }
 
-        // Create DOM structure for message bubble
         const msg = document.createElement("div");
         msg.classList.add("message", sender);
 
@@ -95,36 +165,35 @@
 
         const bubble = document.createElement("div");
         bubble.classList.add("message-bubble");
-        bubble.textContent = text;
 
-        // Apply pulsing animation while waiting for assistant to respond
         if (options.pulse) {
           bubble.classList.add("pulse");
+
           const span = document.createElement("span");
           bubble.appendChild(span);
         } else {
           bubble.textContent = text;
         }
 
-        // Add timestamp
         const time = document.createElement("div");
         time.classList.add("message-time");
-        time.textContent = new Date().toLocaleTimeString();
+        const timestamp = options.timestamp || new Date().toISOString();
+        const timeObj = new Date(timestamp);
+        time.textContent = timeObj.toLocaleTimeString();
 
-        // Combine elements into message DOM structure
         content.append(bubble, time);
         msg.append(avatar, content);
         chatMessages.appendChild(msg);
 
-        // Auto-scroll chat view to the latest message
         chatMessages.scrollTo({
           top: chatMessages.scrollHeight,
           behavior: "smooth",
         });
 
         // Save to session storage
-        if (text.trim() !== "") {
-          existing.push({ sender, text });
+        if (!options.skipSave && text.trim() !== "") {
+          const existing = (await loadMessages()) || [];
+          existing.push({ sender, text, timestamp: timestamp });
           await saveMessages(existing);
         }
       }
@@ -137,12 +206,11 @@
           const msg = chatInput.value.trim();
           if (!msg) return;
 
-          // Append user message to chat
           appendMessage("user", msg);
           chatInput.value = "";
 
           // Prepare assistant response bubble with loading pulse
-          const history = "";
+          const history = await getConversationHistory();
           appendMessage("ai", "", { pulse: true });
 
           try {
@@ -155,7 +223,7 @@
               },
               body: JSON.stringify({
                 input: msg,
-                history,
+                history: history,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               }),
             });
@@ -167,22 +235,29 @@
             // Parse assistant response and update chat
             const data = await response.json();
             const aiMessage = data.output || data.text || "(No response)";
-            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
 
             // Replace pulsing bubble with final assistant text response
+            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = aiMessage;
               lastAiBubble.style.color = "inherit";
-              existing.push({ sender: "ai", text: aiMessage });
+
+              const existing = (await loadMessages()) || [];
+              existing.push({
+                sender: "ai",
+                text: aiMessage,
+                timestamp: new Date().toISOString(),
+              });
               await saveMessages(existing);
+
             } else {
               appendMessage("ai", aiMessage);
             }
-            
+
           } catch (error) {
             console.error("Chat error:", error);
-            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+            const lastAiBubble = chatMessages.querySelector( ".message.ai .message-bubble.pulse");
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = "Something went wrong. Please try again.";
@@ -205,17 +280,28 @@
 
       // Removes all messages except the first one
       if (clearChatButton) {
-        clearChatButton.addEventListener("click", (e) => {
+        clearChatButton.addEventListener("click", async (e) => {
           e.preventDefault();
+
+          // Clear all messages from DOM
           chatMessages.querySelectorAll(".message").forEach((msg, i) => {
-            if (i > 0) {
-              msg.remove();
-            }
+            msg.remove();
+          });
+
+          // Clear storage completely
+          await saveMessages([]);
+
+          // Also send explicit clear message to ensure storage is wiped
+          window.postMessage({ type: "CLEAR_MESSAGES" }, "*");
+
+          // Re-add welcome message
+          await appendMessage("ai", WELCOME_MESSAGE, {
+            skipSave: true,
+            timestamp: new Date().toISOString(),
           });
         });
       }
 
-      // Resize button: toggles chat panel size
       if (resizeChatButton) {
         resizeChatButton.addEventListener("click", (e) => {
           e.preventDefault();
@@ -223,20 +309,18 @@
         });
       }
 
-      // Toggle visibility when clicking the mode button
       if (modeBtn && dropdown) {
         modeBtn.addEventListener("click", (e) => {
           e.preventDefault();
           dropdown.classList.toggle("open");
         });
 
-        // Close dropdown when clicking outside of it
         root.addEventListener("click", (e) => {
-          if (!dropdown.contains(e.target)) {
-            dropdown.classList.remove("open");
-          }
+          if (!dropdown.contains(e.target)) dropdown.classList.remove("open");
         });
       }
+
+      initializeChat();
 
       // Add event containment logic for the shadow root to prevent event leakage
       if (root instanceof ShadowRoot) {
@@ -253,9 +337,7 @@
           root.addEventListener(
             eventType,
             (e) => {
-              if (!root.contains(e.target)) {
-                e.stopPropagation();
-              }
+              if (!root.contains(e.target)) e.stopPropagation();
             },
             true
           );
