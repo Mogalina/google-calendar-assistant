@@ -30,7 +30,7 @@ try {
 
   // Set a fallback configuration if file reading fails
   geminiConfig = {
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-flash-lite",
     config: { 
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
       Your sole purpose is to analyze the user's existing calendar events and their requests 
@@ -231,7 +231,6 @@ async function handleGatherContext(accessToken, params) {
           contextResults.push(`Search results for "${op.query}": No matching events found.`);
         }
       }
-      
     } catch (error) {
       contextResults.push(`Error in ${op.type} operation: ${error.message}`);
     }
@@ -307,11 +306,11 @@ export async function continueChat(input, history = [], accessToken = null, user
 
     let calendarResult = null;
     
-    // Handle context gathering specially
+    // Handle context gathering specially - it needs a follow-up
     if (action === "gather_context") {
       const contextData = await handleGatherContext(accessToken, params);
       
-      // Call Gemini with the gathered context
+      // Now make a second call to Gemini with the gathered context
       const followUpInput = `
         Based on the user's request: "${input}"
         
@@ -364,7 +363,7 @@ export async function continueChat(input, history = [], accessToken = null, user
       };
     }
     
-    // Execute the appropriate calendar action
+    // Execute single-phase actions as before
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone);

@@ -1,4 +1,4 @@
-model: "gemini-2.5-flash"
+model: "gemini-2.5-flash-lite"
 config:
   systemInstruction: |
     You are an **Expert Google Calendar Assistant**.  

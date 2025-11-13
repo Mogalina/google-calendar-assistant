@@ -68,18 +68,11 @@ export async function updateEvent(
   // Create an authenticated Google Calendar client using user's access token
   const calendar = createCalendarClient(accessToken);
 
-  // Validate event before sending to Google Calendar
-  const calendarEvent = new CalendarEvent(eventData);
-  const validationError = calendarEvent.validate();
-  if (validationError) {
-    throw new Error(validationError);
-  }
-
   // Update the event in Google Calendar
   const response = await calendar.events.update({
     calendarId,
     eventId,
-    requestBody: calendarEvent.toObject(),
+    requestBody: eventData,
     sendUpdates,
   });
 
