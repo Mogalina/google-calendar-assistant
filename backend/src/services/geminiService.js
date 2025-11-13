@@ -32,7 +32,7 @@ try {
   // Set a fallback configuration if file reading fails
   geminiConfig = {
     model: "gemini-2.5-flash-lite",
-    config: { 
+    config: {
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
       Your sole purpose is to analyze the user's existing calendar events and their requests 
       to suggest the most efficient, conflict-free, and productive schedule changes.`,
