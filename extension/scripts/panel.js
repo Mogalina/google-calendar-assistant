@@ -1,29 +1,31 @@
 /**
- * This script powers the in-page chat panel for the Chrome extension.
- * It runs inside the panel’s Shadow DOM, manages chat UI logic, and communicates
- * with the main window using `postMessage`.
+ * @fileoverview
+ * Initializes and manages the chat panel interface for the Google Calendar Assistant.
+ * It dynamically connects to the backend API, handles messages between the webpage and the
+ * extension content script, manages chat interactions, and controls user interface behaviors like 
+ * resizing, clearing, and closing the chat window.
  */
 
 (async () => {
   // Prevent double initialization
   let isInitialized = false;
 
-  // Ask the content script for config
+  // Request configuration data from the main window or content script
   window.postMessage({ type: "GET_CONFIG" }, "*");
 
-  // Wait for the config
+  // Listen for configuration data being sent back
   window.addEventListener("message", (event) => {
-    if (event.source !== window) return;
+    if (event.source !== window) {
+      return;
+    }
 
     const { type, data, payload } = event.data || {};
 
     if (type === "CONFIG_DATA") {
       // Prevent multiple initializations
       if (isInitialized) {
-        console.log("Panel already initialized, skipping...");
         return;
       }
-
       isInitialized = true;
 
       const CONFIG = data;
@@ -33,30 +35,23 @@
         return;
       }
 
-      console.log("Panel.js initializing...");
-
-      /**
-       * Attempts to locate the ShadowRoot of the chat panel.
-       */
+      // Attempt to locate the root shadow DOM where the chat UI is hosted
       let root = document.currentScript?.getRootNode();
       if (!(root instanceof ShadowRoot)) {
         const host = document.querySelector("#assistant-chat-panel");
         root = host?.shadowRoot || host?._shadowRoot;
       }
-
+      
+      // If no shadow root is found, initialization fails
       if (!(root instanceof ShadowRoot)) {
         console.error("Panel.js: No valid shadow root found");
         throw new Error("Cannot initialize chat panel");
       }
 
-      /**
-       * Retrieves an element within the Shadow DOM by ID.
-       * @param {string} id - The ID of the target element.
-       * @returns {HTMLElement | null} The found element or null.
-       */
+      // Utility function for quick element selection inside the shadow root
       const get = (id) => root.getElementById(id);
 
-      // Core UI Elements
+      // Retrieve chat panel interface elements
       const chatInput = get("chat-input");
       const chatMessages = get("chat-messages");
       const chatForm = get("chat-form");
@@ -67,19 +62,18 @@
       const resizeChatButton = get("resize-chat-button");
       const initialTimeEl = get("initial-time");
 
-      /**
-       * Initializes the time display in the chat header.
-       */
+       // Set initial timestamp
       if (initialTimeEl) {
         initialTimeEl.textContent = new Date().toLocaleTimeString();
       }
 
       /**
-       * Sends a structured message to the main window for extension communication.
+       * Sends a custom message from this script to the top-level window.
+       * Used to communicate with other parts of the extension.
+       * 
        * @param {string} type - The message type identifier.
        */
       function sendMessageToMainWindow(type) {
-        console.log("Sending message:", type);
         window.top.postMessage({ type }, "*");
       }
 
@@ -101,15 +95,9 @@
         });
       }
 
-      /**
-       * Constant for welcome message
-       */
-      const WELCOME_MESSAGE =
-        "Hello! I'm your Google Calendar assistant. How can I help you today?";
+      const WELCOME_MESSAGE = "Hello! I'm your Google Calendar assistant. How can I help you today?";
 
-      /**
-       * Initialize chat by loading previous messages or showing welcome message
-       */
+      // Initialize chat by loading previous messages or showing welcome message
       async function initializeChat() {
         const messages = await loadMessages();
 
@@ -142,7 +130,9 @@
        */
       async function getConversationHistory() {
         const messages = await loadMessages();
-        if (!messages || messages.length === 0) return [];
+        if (!messages || messages.length === 0) {
+          return [];
+        }
 
         return messages
           .filter((msg) => msg.text !== WELCOME_MESSAGE)
@@ -153,12 +143,16 @@
       }
 
       /**
-       * Creates and appends a chat message bubble to the chat log.
-       * @param {"user" | "ai"} sender - The sender type ("user" or "ai").
-       * @param {string} text - The message text content.
+       * Appends a message to the chat interface.
+       * 
+       * @param {string} sender - The sender of the message (user or assistant).
+       * @param {string} text - The message content.
+       * @param {object} [options] - Additional options.
        */
       async function appendMessage(sender, text, options = {}) {
-        if (!chatMessages) return;
+        if (!chatMessages) {
+          return;
+        }
 
         const msg = document.createElement("div");
         msg.classList.add("message", sender);
@@ -204,9 +198,7 @@
         }
       }
 
-      /**
-       * Attaches event listeners to the chat form for message submission.
-       */
+      // Handle chat form submission when user sends message
       if (chatForm && chatInput && chatMessages) {
         chatForm.addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -217,10 +209,12 @@
           appendMessage("user", msg);
           chatInput.value = "";
 
+          // Prepare assistant response bubble with loading pulse
           const history = await getConversationHistory();
           appendMessage("ai", "", { pulse: true });
 
           try {
+            // Send user message to the assistant backend
             const response = await fetch(CONFIG.API_URL + "/api/gemini", {
               method: "POST",
               headers: {
@@ -230,7 +224,7 @@
               body: JSON.stringify({
                 input: msg,
                 history: history,
-                timezone: "Europe/Bucharest",
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
               }),
             });
 
@@ -238,12 +232,12 @@
               throw new Error(`Server error: ${response.status}`);
             }
 
+            // Parse assistant response and update chat
             const data = await response.json();
             const aiMessage = data.output || data.text || "(No response)";
 
-            const lastAiBubble = chatMessages.querySelector(
-              ".message.ai .message-bubble.pulse"
-            );
+            // Replace pulsing bubble with final assistant text response
+            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
               lastAiBubble.textContent = aiMessage;
@@ -256,44 +250,38 @@
                 timestamp: new Date().toISOString(),
               });
               await saveMessages(existing);
+
             } else {
               appendMessage("ai", aiMessage);
             }
+
           } catch (error) {
             console.error("Chat error:", error);
-            const lastAiBubble = chatMessages.querySelector(
-              ".message.ai .message-bubble.pulse"
-            );
+            const lastAiBubble = chatMessages.querySelector( ".message.ai .message-bubble.pulse");
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
-              lastAiBubble.textContent = "Hmmm...Something went wrong!";
+              lastAiBubble.textContent = "Something went wrong. Please try again.";
               lastAiBubble.style.color = "inherit";
             } else {
-              appendMessage("ai", "Hmmm...Something went wrong!");
+              appendMessage("ai", "Something went wrong. Please try again.");
             }
           }
         });
       }
 
-      /**
-       * Handles closing of the chat panel.
-       */
+      // Close chat button: hides chat panel and notifies main window
       if (closeChatButton) {
         closeChatButton.addEventListener("click", (e) => {
           e.preventDefault();
-          console.log("Close button clicked");
           sendMessageToMainWindow("CLOSE_CHAT_PANEL");
           root.host.style.display = "none";
         });
       }
 
-      /**
-       * Clears chat messages except for the initial one.
-       */
+      // Removes all messages except the first one
       if (clearChatButton) {
         clearChatButton.addEventListener("click", async (e) => {
           e.preventDefault();
-          console.log("Clear chat clicked");
 
           // Clear all messages from DOM
           chatMessages.querySelectorAll(".message").forEach((msg, i) => {
@@ -314,20 +302,13 @@
         });
       }
 
-      /**
-       * Sends a resize request to the main window.
-       */
       if (resizeChatButton) {
         resizeChatButton.addEventListener("click", (e) => {
           e.preventDefault();
-          console.log("Resize clicked");
           sendMessageToMainWindow("RESIZE_CHAT_PANEL");
         });
       }
 
-      /**
-       * Toggles the mode dropdown visibility.
-       */
       if (modeBtn && dropdown) {
         modeBtn.addEventListener("click", (e) => {
           e.preventDefault();
@@ -340,10 +321,8 @@
       }
 
       initializeChat();
-      /**
-       * Activates event containment within the ShadowRoot.
-       * Prevents chat events from leaking to the main document context.
-       */
+
+      // Add event containment logic for the shadow root to prevent event leakage
       if (root instanceof ShadowRoot) {
         const containmentEvents = [
           "keydown",
@@ -353,6 +332,7 @@
           "mouseup",
         ];
 
+        // Stop propagation for these events outside of the shadow DOM
         containmentEvents.forEach((eventType) => {
           root.addEventListener(
             eventType,
@@ -363,6 +343,7 @@
           );
         });
 
+        // Prevent keyboard events in chat input from affecting the parent page
         const keyboardEvents = ["keydown", "keypress", "keyup"];
 
         keyboardEvents.forEach((type) => {
@@ -370,10 +351,7 @@
             type,
             (e) => {
               const active = root.activeElement || document.activeElement;
-              if (
-                chatInput &&
-                (active === chatInput || chatInput.contains(e.target))
-              ) {
+              if (chatInput && (active === chatInput || chatInput.contains(e.target))) {
                 e.stopPropagation();
                 e.stopImmediatePropagation();
               }
@@ -382,9 +360,8 @@
           );
         });
       } else {
-        console.info(
-          "Panel.js: skipping event containment because no ShadowRoot was found."
-        );
+        // If no shadow root found, skip containment setup
+        console.info("Skipping event containment because no shadow root was found.");
       }
     }
   });

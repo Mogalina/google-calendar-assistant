@@ -1,7 +1,9 @@
 /**
+ * @fileoverview
  * Dynamically injects a chat panel user interface into the current webpage.
  * Runs as an immediately invoked function to prevent global namespace pollution.
  */
+
 (async () => {
   // Prevents multiple injections of the chat panel
   if (window.__assistantChatPanelInjected) {
@@ -87,12 +89,8 @@
 
   async function useConfig() {
     try {
-      const configUrl = chrome.runtime.getURL(
-        "components/chat-panel/config.json"
-      );
+      const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
       const config = await fetch(configUrl).then((r) => r.json());
-
-      // Send it back to the page
       window.postMessage({ type: "CONFIG_DATA", data: config }, "*");
     } catch (err) {
       console.error("Failed to load CONFIG:", err);
@@ -193,14 +191,10 @@
 
     // Assign a unique identifier for this panel instance
     panelHost.setAttribute("data-panel-id", Date.now().toString());
-    shadow.aiAvatarUrl = chrome.runtime.getURL(
-      "assets/images/gemini-chat-bot-logo.png"
-    );
+    shadow.aiAvatarUrl = chrome.runtime.getURL("assets/images/gemini-chat-bot-logo.png");
 
     // Load config from the extension
-    const configUrl = chrome.runtime.getURL(
-      "components/chat-panel/config.json"
-    );
+    const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
     const config = await fetch(configUrl).then((res) => res.json());
 
     shadow.host.CONFIG = config;
@@ -208,14 +202,10 @@
     // Inject panel script
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("scripts/panel.js");
-    script.setAttribute(
-      "data-panel-id",
-      panelHost.getAttribute("data-panel-id")
-    );
+    script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
 
     script.onload = () => console.log("Panel script loaded successfully");
-    script.onerror = (err) =>
-      console.error("Failed to load panel script:", err);
+    script.onerror = (err) => console.error("Failed to load panel script:", err);
 
     shadow.appendChild(script);
   }
@@ -306,6 +296,7 @@
 
   /**
    * Sends a message to toggle the assistant button visibility.
+   * 
    * @param {boolean} show - True to show the button, false to hide the button.
    */
   function toggleAssistantButton(show) {
