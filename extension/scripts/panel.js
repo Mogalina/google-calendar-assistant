@@ -137,7 +137,7 @@
         return messages
           .filter((msg) => msg.text !== WELCOME_MESSAGE)
           .map((msg) => ({
-            role: msg.sender === "user" ? "user" : "assistant",
+            role: msg.sender === "user" ? "user" : "model",
             parts: [{ text: msg.text }],
           }));
       }
