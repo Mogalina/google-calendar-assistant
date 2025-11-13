@@ -37,11 +37,41 @@
       case "SAVE_MESSAGES":
         saveMessages(payload);
         break;
+      case "LOAD_MESSAGES":
+        loadMessages();
+        break;
     }
   });
 
   async function saveMessages(messages) {
     chrome.runtime.sendMessage({ action: "SAVE_MESSAGES", payload: messages });
+  }
+
+  async function loadMessages() {
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: "LOAD_MESSAGES" }, (response) => {
+        if (response?.status === "success") {
+          // Send the loaded messages back to panel.js
+          window.postMessage(
+            {
+              type: "LOADED_MESSAGES",
+              payload: response.messages || [],
+            },
+            "*"
+          );
+          resolve(response.messages || []);
+        } else {
+          window.postMessage(
+            {
+              type: "LOADED_MESSAGES",
+              payload: [],
+            },
+            "*"
+          );
+          resolve([]);
+        }
+      });
+    });
   }
 
   async function useConfig() {

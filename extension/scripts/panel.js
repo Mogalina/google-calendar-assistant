@@ -12,14 +12,14 @@
 
   // Listen for configuration data being sent back
   window.addEventListener("message", (event) => {
-    // Ensure message is from the same window context
     if (event.source !== window) {
       return;
     }
 
-    // Process incoming configuration data
-    if (event.data?.type === "CONFIG_DATA") {
-      const CONFIG = event.data.data;
+    const { type, data, payload } = event.data || {};
+
+    if (type === "CONFIG_DATA") {
+      const CONFIG = data;
       if (!CONFIG || !CONFIG.API_URL) {
         console.error("Invalid configuration:", CONFIG);
         return;
