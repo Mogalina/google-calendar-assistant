@@ -92,7 +92,7 @@
       const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
       const config = await fetch(configUrl).then((r) => r.json());
       window.postMessage({ type: "CONFIG_DATA", data: config }, "*");
-    } catch (err) {
+    } catch (err) { 
       console.error("Failed to load CONFIG:", err);
     }
   }
