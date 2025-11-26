@@ -142,7 +142,6 @@
         assistantButtonWrapper.style.left = `${newLeft}px`;
         assistantButtonWrapper.style.top = `${newTop}px`;
 
-        // Save position as percentages
         positionPercentX = newLeft / window.innerWidth;
         positionPercentY = newTop / window.innerHeight;
       }
@@ -156,7 +155,6 @@
       assistantButtonWrapper.style.cursor = "grab";
       assistantButtonWrapper.style.userSelect = "unset";
 
-      // If button was moved, save final position as percentages
       if (hasMoved) {
         const rect = assistantButtonWrapper.getBoundingClientRect();
         positionPercentX = rect.left / window.innerWidth;
