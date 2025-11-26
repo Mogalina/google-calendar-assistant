@@ -119,6 +119,16 @@
     chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
   }
 
+  async function getAccessToken() {
+    chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
+      window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
+    });
+  }
+
+  async function startAuth() {
+    chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
+  }
+
   /**
    * Creates and injects the chat panel host element and shadow root.
    * Loads assets from the extension package, ensuring valid paths.
