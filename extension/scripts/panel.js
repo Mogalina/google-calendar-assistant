@@ -56,6 +56,7 @@
       const chatMessages = get("chat-messages");
       const chatForm = get("chat-form");
       const dropdown = get("mode-dropdown");
+      const dropdownMenu = get("dropdown-menu");
       const modeBtn = get("mode-btn");
       const closeChatButton = get("close-chat-button");
       const clearChatButton = get("clear-chat-button");
@@ -309,16 +310,20 @@
         });
       }
 
-      if (modeBtn && dropdown) {
-        modeBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          dropdown.classList.toggle("open");
-        });
+      modeBtn.addEventListener("click", () => {
+        dropdownMenu.style.display =
+          dropdownMenu.style.display === "block" ? "none" : "block";
+      });
 
-        root.addEventListener("click", (e) => {
-          if (!dropdown.contains(e.target)) dropdown.classList.remove("open");
-        });
-      }
+      root.addEventListener("click", (e) => {
+        if (!document.getElementById("mode-dropdown").contains(e.target)) {
+          dropdownMenu.style.display = "none";
+        }
+      });
+
+      // if (modeBtn && dropdown) {
+        
+      // }
 
       initializeChat();
 
