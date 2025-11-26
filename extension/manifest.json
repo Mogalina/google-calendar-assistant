@@ -9,7 +9,8 @@
     "128": "icons/icon-128.png"
   },
   "host_permissions": [
-    "*://calendar.google.com/*"
+    "*://calendar.google.com/*",
+    "http://localhost:5000/*"
   ],
   "permissions": [
     "activeTab", 
@@ -17,7 +18,8 @@
     "storage"
   ],
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js", 
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -35,6 +37,15 @@
         "components/assistant-button/assistantActionButton.css",
         "components/chat-panel/panel.css",
         "components/chat-panel/global.css"
+      ]
+    },
+    {
+      "matches": [
+        "http://localhost:5000/api/auth/callback*"
+      ],
+      "run_at": "document_end",
+      "js": [
+        "scripts/oauthCallback.js"
       ]
     }
   ],
