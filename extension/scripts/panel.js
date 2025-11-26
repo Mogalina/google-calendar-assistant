@@ -216,6 +216,8 @@
           appendMessage("user", msg);
           chatInput.value = "";
 
+          updateMicrophoneState();
+
           // Prepare assistant response bubble with loading pulse
           const history = await getConversationHistory();
           appendMessage("ai", "", { pulse: true });
@@ -404,7 +406,24 @@
       // Called when the recognizer stops
       function handleSpeechEnd() {
         isRecording = false;
-        updateMicrophoneState(); 
+
+        // Use the final transcript if available, otherwise whatever is in the input
+        const text = (finalTranscript || (chatInput ? chatInput.value : "")).trim();
+        if (!text) {
+          finalTranscript = "";
+          updateMicrophoneState();
+          return;
+        }
+
+        // Put the text into the chat input so the flow is the same as typed messages
+        if (chatInput) {
+          chatInput.value = text;
+        }
+
+        // Clear the stored transcript for the next recording
+        finalTranscript = "";
+
+        updateMicrophoneState();
       }
 
       /**
