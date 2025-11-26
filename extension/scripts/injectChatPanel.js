@@ -43,6 +43,12 @@
       case "CLEAR_MESSAGES":
         clearMessages();
         break;
+      case "GCA_REQUEST_ACCESS_TOKEN":
+        getAccessToken();
+        break;
+      case "GCA_START_AUTH":
+        startAuth();
+        break;
     }
   });
 
@@ -95,6 +101,16 @@
     } catch (err) {
       console.error("Failed to load CONFIG:", err);
     }
+  }
+
+  async function getAccessToken() {
+    chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
+      window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
+    });
+  }
+
+  async function startAuth() {
+    chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
   }
 
   /**
