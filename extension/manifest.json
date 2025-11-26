@@ -10,7 +10,7 @@
   },
   "host_permissions": [
     "*://calendar.google.com/*",
-    "http://localhost:5000/*"
+    "http://localhost:8080/*"
   ],
   "permissions": [
     "activeTab", 
@@ -41,7 +41,7 @@
     },
     {
       "matches": [
-        "http://localhost:5000/api/auth/callback*"
+        "http://localhost:8080/api/auth/callback*"
       ],
       "run_at": "document_end",
       "js": [

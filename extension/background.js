@@ -17,22 +17,21 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
   // Auth related actions
   if (request.action === "START_GOOGLE_AUTH") {
-    console.log("Background script: starting Google OAuth flow...");
+    console.log("Background script: Starting Google OAuth flow");
 
     fetch(`${AUTH_BASE_URL}/authorize`)
       .then((res) => {
         if (!res.ok) {
-          throw new Error("Failed to get authUrl from backend");
+          throw new Error("Failed to get 'authUrl' from backend");
         }
         return res.json();
       })
       .then((data) => {
         const authUrl = data.authUrl;
         if (!authUrl) {
-          throw new Error("Backend did not return authUrl");
+          throw new Error("Backend did not return 'authUrl'");
         }
 
-        console.log("Background script: opening authUrl:", authUrl);
         chrome.tabs.create({ url: authUrl });
 
         sendResponse({
@@ -41,7 +40,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         });
       })
       .catch((err) => {
-        console.error("Background script: error starting OAuth flow:", err);
+        console.error("Background script: Error starting OAuth flow:", err);
         sendResponse({
           status: "error",
           message: "Failed to start OAuth flow.",
@@ -65,7 +64,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
             status: "need_auth",
           });
         } else {
-          console.error("Background script: error getting access token:", err);
+          console.error("Background script: Error getting access token:", err);
           sendResponse({
             status: "error",
             message: err.message || "Unknown error",
@@ -81,7 +80,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
     if (!access_token || !refresh_token) {
       console.error(
-        "Background script: Missing access_token or refresh_token in OAUTH_TOKENS_RECEIVED:",
+        "Background script: Missing 'access_token' or 'refresh_token' in OAUTH_TOKENS_RECEIVED:",
         request.payload
       );
       sendResponse({

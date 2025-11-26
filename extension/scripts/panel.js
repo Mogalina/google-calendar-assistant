@@ -13,7 +13,10 @@
   // Request configuration data from the main window or content script
   window.postMessage({ type: "GET_CONFIG" }, "*");
 
-  // Listen for configuration data being sent back
+  /**
+   * Listener for config and other messages coming from the window.
+   * We only act on messages posted by ourselves (same window).
+   */
   window.addEventListener("message", (event) => {
     if (event.source !== window) {
       return;
@@ -35,7 +38,12 @@
         return;
       }
 
-      // Sends a request for valid OAuth token
+      /**
+       * Requests a valid access token for Google Calendar Assistant.
+       * The background script receives this and performs token retrieval or refresh.
+       *
+       * @returns {Promise<object>} { status, access_token? }
+       */
       function requestGcaAccessToken() {
         return new Promise((resolve) => {
           function listener(event) {
@@ -65,7 +73,6 @@
       
       // If no shadow root is found, initialization fails
       if (!(root instanceof ShadowRoot)) {
-        console.error("Panel.js: No valid shadow root found");
         throw new Error("Cannot initialize chat panel");
       }
 
@@ -98,10 +105,20 @@
         window.top.postMessage({ type }, "*");
       }
 
+      /**
+       * Saves messages to storage via content script.
+       * 
+       * @param {Array} messages
+       */
       async function saveMessages(messages) {
         window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
       }
 
+       /**
+       * Loads previously saved messages from storage.
+       * 
+       * @returns {Promise<Array>}
+       */
       async function loadMessages() {
         return new Promise((resolve) => {
           function listener(event) {
@@ -118,7 +135,10 @@
 
       const WELCOME_MESSAGE = "Hello! I'm your Google Calendar assistant. How can I help you today?";
 
-      // Initialize chat by loading previous messages or showing welcome message
+      /**
+       * Loads saved conversation and populates the chat.
+       * If none exists, shows the welcome message.
+       */
       async function initializeChat() {
         const messages = await loadMessages();
 
@@ -155,6 +175,7 @@
           return [];
         }
 
+        // Remove welcome message from prompt
         return messages
           .filter((msg) => msg.text !== WELCOME_MESSAGE)
           .map((msg) => ({
@@ -243,10 +264,10 @@
               const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
               if (lastAiBubble) {
                 lastAiBubble.classList.remove("pulse");
-                lastAiBubble.textContent = "Please connect your Google account to use the calendar assistant.";
+                lastAiBubble.textContent = "Please connect your Google account to use the Calendar Assistant.";
                 lastAiBubble.style.color = "inherit";
               } else {
-                await appendMessage("ai", "Please connect your Google account to use the calendar assistant.");
+                await appendMessage("ai", "Please connect your Google account to use the Calendar Assistant.");
               }
 
               startGoogleAuthFlow();

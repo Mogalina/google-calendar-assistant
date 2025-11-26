@@ -22,9 +22,6 @@
     }
 
     switch (type) {
-      case "GET_CONFIG":
-        useConfig();
-        break;
       case "ASSISTANT_BUTTON_CLICK":
         toggleChatPanel();
         break;
@@ -52,15 +49,24 @@
     }
   });
 
+  /**
+   * Sends messages to the background script to persist them in storage.
+   * 
+   * @param {Array} messages - Chat messages to save.
+   */
   async function saveMessages(messages) {
     chrome.runtime.sendMessage({ action: "SAVE_MESSAGES", payload: messages });
   }
 
+  /**
+   * Loads stored messages from extension storage.
+   * Sends the messages back to the Chat Panel via window.postMessage.
+   */
   async function loadMessages() {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ action: "LOAD_MESSAGES" }, (response) => {
         if (response?.status === "success") {
-          // Send the loaded messages back to panel.js
+          // Returns messages back to the chat panel script
           window.postMessage(
             {
               type: "LOADED_MESSAGES",
@@ -83,6 +89,9 @@
     });
   }
 
+  /**
+   * Clears all stored chat messages.
+   */
   async function clearMessages() {
     chrome.runtime.sendMessage({ action: "CLEAR_MESSAGES" }, (response) => {
       if (response?.status === "success") {
@@ -93,22 +102,19 @@
     });
   }
 
-  async function useConfig() {
-    try {
-      const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
-      const config = await fetch(configUrl).then((r) => r.json());
-      window.postMessage({ type: "CONFIG_DATA", data: config }, "*");
-    } catch (err) {
-      console.error("Failed to load CONFIG:", err);
-    }
-  }
-
+  /**
+   * Requests access token from extension background script for Google Chat API.
+   */
   async function getAccessToken() {
     chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
+      // Send token back to panel script
       window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
     });
   }
 
+  /**
+   * Initiates Google authentication flow by calling the background script.
+   */
   async function startAuth() {
     chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
   }
