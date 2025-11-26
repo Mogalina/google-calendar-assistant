@@ -338,11 +338,17 @@
         // If the API is not available, we disable the mic button 
         if (!SpeechRecognition) {
           console.warn("Web Speech API is not supported in this browser.");
-          if (microphoneButton && microphoneTooltip) {
+          recognition = null;
+
+          if (microphoneButton) {
             microphoneButton.disabled = true;
-            microphoneButton.classList.add("disabled");
+            microphoneButton.classList.add("hidden");
+          }
+          if (microphoneTooltip) {
             microphoneTooltip.textContent = "Voice input not supported";
           }
+
+          updateMicrophoneState();
           return;
         }
 
@@ -357,6 +363,8 @@
         recognition.addEventListener("result", handleSpeechResult);
         recognition.addEventListener("error", handleSpeechError);
         recognition.addEventListener("end", handleSpeechEnd);
+
+        updateMicrophoneState();
       }
 
       /**
@@ -383,17 +391,59 @@
         if (chatInput) {
           chatInput.value = (finalTranscript || interimTranscript).trim();
         }
+        updateMicrophoneState();
       }
 
       // Handles errors from the speech recognizer
       function handleSpeechError(event) {
         console.error("Speech recognition error:", event.error);
         isRecording = false;
+        updateMicrophoneState();
       }
 
       // Called when the recognizer stops
       function handleSpeechEnd() {
-        isRecording = false; 
+        isRecording = false;
+        updateMicrophoneState(); 
+      }
+
+      /**
+       * Updates microphone button depending on:
+       * Web Speech support
+       * whether user typed text
+       * whether we are currently recording
+       */
+      function updateMicrophoneState() {
+        if (!microphoneButton) return;
+
+        const speechSupported = !!recognition;
+        const hasText = chatInput && chatInput.value.trim().length > 0;
+
+        // Hide microphone if speech is not supported or the user has typed text
+        const shouldHide = !speechSupported || (hasText && !isRecording);
+
+        microphoneButton.disabled = shouldHide;
+        microphoneButton.classList.toggle("hidden", shouldHide);
+
+        // When recording, keep the button visible and highlight it
+        microphoneButton.classList.toggle(
+          "recording",
+          speechSupported && isRecording && !shouldHide
+        );
+
+        // Update tooltip text for clarity
+        if (microphoneTooltip) {
+          if (!speechSupported) {
+            microphoneTooltip.textContent = "Voice input not supported";
+          } else if (isRecording) {
+            microphoneTooltip.textContent = "Stop recording";
+          } else if (hasText) {
+            microphoneTooltip.textContent = "Clear text to use microphone";
+          } else {
+            microphoneTooltip.textContent = "Start voice message";
+          }
+        }
+
       }
 
       // Wire up microphone button to start/stop speech recognition
@@ -404,6 +454,8 @@
           // If recognition is not initialized or not supported, do nothing
           if (!recognition) return;
 
+          if (microphoneButton.disabled) return;
+
           if (isRecording) {
             recognition.stop();
           } else {
@@ -411,11 +463,20 @@
             finalTranscript = ""; // reset previous text
             recognition.start();
           }
+
+          updateMicrophoneState();
+        });
+      }
+
+      if (chatInput) {
+        chatInput.addEventListener("input", () => {
+          updateMicrophoneState();
         });
       }
 
       initializeSpeechRecognition();
       initializeChat();
+      updateMicrophoneState();
 
       // Add event containment logic for the shadow root to prevent event leakage
       if (root instanceof ShadowRoot) {
