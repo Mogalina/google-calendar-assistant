@@ -1,9 +1,8 @@
 /**
  * @fileoverview
- * Handles the OAuth2 callback flow for the Google Calendar Assistant.
- * This script runs in the OAuth redirect page, processes the authorization
- * response from Google (code or error), and passes the result back to the
- * extension using window messaging.
+ * Handles the OAuth2 callback page for the Google Calendar Assistant.
+ * It reads the JSON with access/refresh tokens rendered in the page body
+ * and forwards them to the background script via chrome.runtime.sendMessage.
  */
 
 (function () {
