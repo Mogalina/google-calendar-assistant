@@ -1,15 +1,12 @@
 /**
  * @fileoverview
  * Handles the OAuth2 callback page for the Google Calendar Assistant.
- * It reads the JSON with access/refresh tokens rendered in the page body
- * and forwards them to the background script via chrome.runtime.sendMessage.
+ * It reads the JSON with access/refresh tokens rendered in the page body and forwards them to the 
+ * background script via chrome.runtime.sendMessage.
  */
 
 (function () {
-  console.log("oauthCallback.js: content script loaded on /api/auth/callback");
-
   if (window.self !== window.top) {
-    console.log("oauthCallback.js: running inside iframe, abort.");
     return;
   }
 
@@ -18,7 +15,6 @@
       const rawText = (document.body && document.body.innerText || "").trim();
 
       if (!rawText) {
-        console.error("oauthCallback.js: body is empty, no JSON to parse.");
         return;
       }
 
@@ -26,8 +22,7 @@
       try {
         data = JSON.parse(rawText);
       } catch (parseError) {
-        console.error("oauthCallback.js: failed to parse JSON from body:", parseError);
-        console.log("oauthCallback.js: body content was:", rawText);
+        console.error("OAuth callback: Failed to parse JSON from body:", parseError);
         return;
       }
 
@@ -35,11 +30,11 @@
 
       // Basic validation of required fields
       if (!access_token || !refresh_token) {
-        console.error("oauthCallback.js: missing access_token or refresh_token in JSON:", data);
+        console.error("OAuth callback: Missing 'access_token' or 'refresh_token' in JSON:", data);
         return;
       }
 
-      console.log("oauthCallback.js: tokens read from callback page:", {
+      console.log("OAuth callback: Tokens read from callback page:", {
         access_token_preview: access_token.slice(0, 10) + "...",
         has_refresh_token: !!refresh_token,
         expiry_date,
@@ -58,17 +53,15 @@
         (response) => {
           if (chrome.runtime.lastError) {
             console.error(
-              "oauthCallback.js: error sending message to background:",
+              "OAuth callback: Error sending message to background:",
               chrome.runtime.lastError.message
             );
             return;
           }
-
-          console.log("oauthCallback.js: background responded:", response);
         }
       );
     } catch (err) {
-      console.error("oauthCallback.js: unexpected error:", err);
+      console.error("OAuth callback: Unexpected error:", err);
     }
   }
 
