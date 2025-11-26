@@ -109,14 +109,8 @@
         let newTop = e.clientY - offsetY;
 
         const rect = assistantButtonWrapper.getBoundingClientRect();
-        newLeft = Math.max(
-          0,
-          Math.min(newLeft, window.innerWidth - rect.width)
-        );
-        newTop = Math.max(
-          0,
-          Math.min(newTop, window.innerHeight - rect.height)
-        );
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
 
         assistantButtonWrapper.style.left = `${newLeft}px`;
         assistantButtonWrapper.style.top = `${newTop}px`;
