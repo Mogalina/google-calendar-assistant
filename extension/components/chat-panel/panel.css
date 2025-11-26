@@ -296,6 +296,33 @@
   border-radius: 3px;
 }
 
+.microphone-button {
+  border: none;
+  outline: none;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+
+  width: 35px;
+  height: 35px;
+  border-radius: 27px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.microphone-button-icon {
+  width: 26px;
+  height: 26px;
+  opacity: 0.8;
+}
+
+.microphone-button:hover {
+  background-color: var(--bg-hover-gray);
+}
+
 .action-button {
   position: absolute;
   right: 10px;

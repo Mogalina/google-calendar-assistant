@@ -61,6 +61,13 @@
       const clearChatButton = get("clear-chat-button");
       const resizeChatButton = get("resize-chat-button");
       const initialTimeEl = get("initial-time");
+      const microphoneButton = get("microphone-button");
+      const microphoneTooltip = get("mic-tooltip-text");
+
+      // State variables for Web Speech API
+      let recognition = null;     
+      let isRecording = false;   
+      let finalTranscript = "";  
 
        // Set initial timestamp
       if (initialTimeEl) {
@@ -320,6 +327,94 @@
         });
       }
 
+      /* 
+        * Initializes the Web Speech API for voice recognition
+        * Creates the SpeechRecognition instance and sets basic configuration
+      */
+      function initializeSpeechRecognition() {
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        // If the API is not available, we disable the mic button 
+        if (!SpeechRecognition) {
+          console.warn("Web Speech API is not supported in this browser.");
+          if (microphoneButton && microphoneTooltip) {
+            microphoneButton.disabled = true;
+            microphoneButton.classList.add("disabled");
+            microphoneTooltip.textContent = "Voice input not supported";
+          }
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+
+        // We want partial results so we can show live text
+        recognition.interimResults = true;
+
+        // We only need one phrase per click, not continuous dictation
+        recognition.continuous = false;
+
+        recognition.addEventListener("result", handleSpeechResult);
+        recognition.addEventListener("error", handleSpeechError);
+        recognition.addEventListener("end", handleSpeechEnd);
+      }
+
+      /**
+       * Handles speech recognition results
+       * Builds final + interim transcripts and displays them in the textarea
+       */
+      function handleSpeechResult(event) {
+        let interimTranscript = "";
+        finalTranscript = "";
+
+        // Iterate over all results from the recognizer
+        for (let i = 0; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0].transcript;
+
+          if (result.isFinal) {
+            finalTranscript += text + " ";
+          } else {
+            interimTranscript += text + " ";
+          }
+        }
+
+        // Show latest text in the chat input so the user can see what was heard
+        if (chatInput) {
+          chatInput.value = (finalTranscript || interimTranscript).trim();
+        }
+      }
+
+      // Handles errors from the speech recognizer
+      function handleSpeechError(event) {
+        console.error("Speech recognition error:", event.error);
+        isRecording = false;
+      }
+
+      // Called when the recognizer stops
+      function handleSpeechEnd() {
+        isRecording = false; 
+      }
+
+      // Wire up microphone button to start/stop speech recognition
+      if (microphoneButton) {
+        microphoneButton.addEventListener("click", (e) => {
+          e.preventDefault();
+
+          // If recognition is not initialized or not supported, do nothing
+          if (!recognition) return;
+
+          if (isRecording) {
+            recognition.stop();
+          } else {
+            isRecording = true;
+            finalTranscript = ""; // reset previous text
+            recognition.start();
+          }
+        });
+      }
+
+      initializeSpeechRecognition();
       initializeChat();
 
       // Add event containment logic for the shadow root to prevent event leakage
