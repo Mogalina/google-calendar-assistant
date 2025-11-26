@@ -35,6 +35,27 @@
         return;
       }
 
+      // Sends a request for valid OAuth token
+      function requestGcaAccessToken() {
+        return new Promise((resolve) => {
+          function listener(event) {
+            if (event.source !== window) return;
+            if (event.data?.type !== "GCA_ACCESS_TOKEN_RESPONSE") return;
+
+            window.removeEventListener("message", listener);
+            resolve(event.data.payload);
+          }
+
+          window.addEventListener("message", listener);
+          window.postMessage({ type: "GCA_REQUEST_ACCESS_TOKEN" }, "*");
+        });
+      }
+
+      // Initiates the Google OAuth flow by notifying the main window
+      function startGoogleAuthFlow() {
+        window.postMessage({ type: "GCA_START_AUTH" }, "*");
+      }
+
       // Attempt to locate the root shadow DOM where the chat UI is hosted
       let root = document.currentScript?.getRootNode();
       if (!(root instanceof ShadowRoot)) {
@@ -214,12 +235,46 @@
           appendMessage("ai", "", { pulse: true });
 
           try {
+            // Request access token from background script
+            const gcaTokenResp = await requestGcaAccessToken();
+
+            if (gcaTokenResp.status === "need_auth") {
+              // If user needs to authenticate, inform them in the chat and start auth flow
+              const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+              if (lastAiBubble) {
+                lastAiBubble.classList.remove("pulse");
+                lastAiBubble.textContent = "Please connect your Google account to use the calendar assistant.";
+                lastAiBubble.style.color = "inherit";
+              } else {
+                await appendMessage("ai", "Please connect your Google account to use the calendar assistant.");
+              }
+
+              startGoogleAuthFlow();
+              return;
+            }
+
+            // If token retrieval failed, show error
+            if (gcaTokenResp.status !== "success") {
+              console.error("Could not obtain access token:", gcaTokenResp);
+              const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+              if (lastAiBubble) {
+                lastAiBubble.classList.remove("pulse");
+                lastAiBubble.textContent = "Something went wrong with Google authentication. Please try again.";
+                lastAiBubble.style.color = "inherit";
+              } else {
+                await appendMessage("ai", "Something went wrong with Google authentication. Please try again.");
+              }
+              return;
+            }
+
+            const gcaAccessToken = gcaTokenResp.access_token;
+
             // Send user message to the assistant backend
             const response = await fetch(CONFIG.API_URL + "/api/gemini", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${CONFIG.ACCESS_TOKEN}`,
+                Authorization: `Bearer ${gcaAccessToken}`,
               },
               body: JSON.stringify({
                 input: msg,
