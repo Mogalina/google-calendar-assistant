@@ -22,9 +22,6 @@
     }
 
     switch (type) {
-      case "GET_CONFIG":
-        useConfig();
-        break;
       case "ASSISTANT_BUTTON_CLICK":
         toggleChatPanel();
         break;
@@ -103,21 +100,6 @@
         console.error("Failed to clear messages:", response?.message);
       }
     });
-  }
-
-  /**
-   * Loads the chat panel's configuration file from the extension package.
-   * 
-   * @returns {Promise<void>} Resolves when the config has been loaded and posted.
-   */
-  async function useConfig() {
-    try {
-      const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
-      const config = await fetch(configUrl).then((r) => r.json());
-      window.postMessage({ type: "CONFIG_DATA", data: config }, "*");
-    } catch (err) {
-      console.error("Failed to load configuration:", err);
-    }
   }
 
   /**
@@ -232,12 +214,6 @@
     // Assign a unique identifier for this panel instance
     panelHost.setAttribute("data-panel-id", Date.now().toString());
     shadow.aiAvatarUrl = chrome.runtime.getURL("assets/images/gemini-chat-bot-logo.png");
-
-    // Load config from the extension
-    const configUrl = chrome.runtime.getURL("components/chat-panel/config.json");
-    const config = await fetch(configUrl).then((res) => res.json());
-
-    shadow.host.CONFIG = config;
 
     // Inject panel script
     const script = document.createElement("script");

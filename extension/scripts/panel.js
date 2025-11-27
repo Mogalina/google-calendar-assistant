@@ -10,9 +10,6 @@
   // Prevent double initialization
   let isInitialized = false;
 
-  // Request configuration data from the main window or content script
-  window.postMessage({ type: "GET_CONFIG" }, "*");
-
   /**
    * Listener for config and other messages coming from the window.
    * We only act on messages posted by ourselves (same window).
