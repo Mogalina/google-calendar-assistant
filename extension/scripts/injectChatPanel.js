@@ -205,15 +205,7 @@
    */
   async function injectPanelHTML(html, shadow) {
     const temp = document.createElement("div");
-    temp.innerHTML = html;
-
-    // Update stylesheet links to point to Chrome extension URLs
-    temp.querySelectorAll("link[rel='stylesheet']").forEach((link) => {
-      const href = link.getAttribute("href");
-      if (href && !href.startsWith("chrome-extension://")) {
-        link.href = chrome.runtime.getURL("components/chat-panel/" + href);
-      }
-    });
+    temp.innerHTML = html.trim();
 
     // Update image sources to point to Chrome extension URLs
     temp.querySelectorAll("img").forEach((img) => {
