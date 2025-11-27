@@ -5,44 +5,68 @@
  */
 
 (async () => {
-  // Prevents multiple injections of the chat panel
+  // Prevents multiple injections of the chat panel on the same page load
   if (window.__assistantChatPanelInjected) {
     return;
   }
   window.__assistantChatPanelInjected = true;
 
+  // Tracks the current height state of the panel
   let isFullHeight = true;
+  
+  // Reference to the main container div of the panel
   let panelHost = null;
 
-  // Listen for messages from extension or host page
+  /**
+   * Main Event Listener for Window Messages.
+   * It listens for specific message types dispatched from other parts of the content script or the 
+   * injected panel itself, and routes them to the appropriate handler functions.
+   */
   window.addEventListener("message", (event) => {
     const { type, payload } = event.data || {};
+    
+    // Ignore messages without a type identifier
     if (!type) {
       return;
     }
 
     switch (type) {
+      // Triggered when the floating action button is clicked
       case "ASSISTANT_BUTTON_CLICK":
         toggleChatPanel();
         break;
+      
+      // Requests closing the panel
       case "CLOSE_CHAT_PANEL":
         closeChatPanel();
         break;
+      
+      // Requests toggling the panel height
       case "RESIZE_CHAT_PANEL":
         resizeChatPanel();
         break;
+      
+      // Request to save chat history
       case "SAVE_MESSAGES":
         saveMessages(payload);
         break;
+      
+      // Request to retrieve chat history
       case "LOAD_MESSAGES":
         loadMessages();
         break;
+      
+      // Request to wipe chat history
       case "CLEAR_MESSAGES":
         clearMessages();
         break;
+      
+      // Request an OAuth token
       case "GCA_REQUEST_ACCESS_TOKEN":
         getAccessToken();
         break;
+      
+      // Trigger the Google Sign-In flow
       case "GCA_START_AUTH":
         startAuth();
         break;
@@ -50,23 +74,24 @@
   });
 
   /**
-   * Sends messages to the background script to persist them in storage.
+   * Sends a message to the background script to save the current conversation history.
    * 
-   * @param {Array} messages - Chat messages to save.
+   * @param {Array<Object>} messages - The array of message objects to persist.
    */
   async function saveMessages(messages) {
     chrome.runtime.sendMessage({ action: "SAVE_MESSAGES", payload: messages });
   }
 
   /**
-   * Loads stored messages from extension storage.
-   * Sends the messages back to the Chat Panel via window.postMessage.
+   * Requests stored messages from the background script.
+   * 
+   * @returns {Promise<Array>} A promise that resolves with the messages array.
    */
   async function loadMessages() {
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ action: "LOAD_MESSAGES" }, (response) => {
         if (response?.status === "success") {
-          // Returns messages back to the chat panel script
+          // Send the loaded messages back
           window.postMessage(
             {
               type: "LOADED_MESSAGES",
@@ -76,6 +101,7 @@
           );
           resolve(response.messages || []);
         } else {
+          // Handle failure or empty state by sending an empty array
           window.postMessage(
             {
               type: "LOADED_MESSAGES",
@@ -90,7 +116,7 @@
   }
 
   /**
-   * Clears all stored chat messages.
+   * Sends a command to the background script to clear all stored messages.
    */
   async function clearMessages() {
     chrome.runtime.sendMessage({ action: "CLEAR_MESSAGES" }, (response) => {
@@ -103,28 +129,19 @@
   }
 
   /**
-   * Requests access token from extension background script for Google Chat API.
+   * Bridges the request for an Access Token.
+   * It asks the background script for a token, then forwards the response
+   * back to the window so panel.js can use it.
    */
-  async function getAccessToken() {
-    chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
-      // Send token back to panel script
-      window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
-    });
-  }
-
-  /**
-   * Initiates Google authentication flow by calling the background script.
-   */
-  async function startAuth() {
-    chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
-  }
-
   async function getAccessToken() {
     chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
       window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
     });
   }
 
+  /**
+   * Triggers the OAuth flow via the background script.
+   */
   async function startAuth() {
     chrome.runtime.sendMessage({ action: "START_GOOGLE_AUTH" });
   }
@@ -140,7 +157,7 @@
       return panelHost;
     }
 
-    // Create host div and apply initial styles
+    // Create host div and apply initial styles for positioning and layout
     panelHost = document.createElement("div");
     panelHost.id = "assistant-chat-panel";
     Object.assign(panelHost.style, {
@@ -162,7 +179,8 @@
 
     isFullHeight = true;
 
-    // Create a shadow root to encapsulate styles and structure
+    // Create a shadow root to encapsulate styles and structure.
+    // This prevents page CSS from bleeding into the chat panel and vice-versa.
     const shadow = panelHost.attachShadow({ mode: "open" });
     panelHost._shadowRoot = shadow;
     document.body.appendChild(panelHost);
@@ -170,7 +188,7 @@
     // Hide assistant button while panel is open
     toggleAssistantButton(false);
 
-    // Fetch and inject panel
+    // Fetch the raw HTML template and inject it
     fetch(chrome.runtime.getURL("components/chat-panel/panel.html"))
       .then((r) => r.text())
       .then((html) => injectPanelHTML(html, shadow))
@@ -180,7 +198,7 @@
   }
 
   /**
-   * Injects HTML panel content.
+   * Injects HTML panel content into the Shadow DOM.
    *
    * @param {string} html - Raw HTML content of the panel.
    * @param {ShadowRoot} shadow - Shadow root of the panel.
@@ -210,7 +228,7 @@
     shadow.appendChild(temp);
     shadow._contentRoot = temp.querySelector("html") || temp;
 
-    // Append required CSS files from extension
+    // Manually append required CSS files
     [
       "components/chat-panel/global.css",
       "components/chat-panel/panel.css",
@@ -223,9 +241,10 @@
 
     // Assign a unique identifier for this panel instance
     panelHost.setAttribute("data-panel-id", Date.now().toString());
+    
     shadow.aiAvatarUrl = chrome.runtime.getURL("assets/images/gemini-chat-bot-logo.png");
 
-    // Inject panel script
+    // Inject the main panel logic script
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("scripts/panel.js");
     script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
@@ -245,12 +264,13 @@
     if (panel.style.display === "none") {
       showChatPanel();
     } else {
-      closeChatPanel();
+      hideChatPanel();
     }
   }
 
   /**
    * Shows the chat panel and resets it to full height.
+   * Ensures the display properties and transforms are set to visible states.
    */
   function showChatPanel() {
     if (!panelHost) {
@@ -266,12 +286,14 @@
       bottom: "auto",
     });
 
-    // Ensure internal chat container fills viewport
+    // Ensure internal chat container fills viewport inside Shadow DOM
     const shadow = panelHost.shadowRoot || panelHost._shadowRoot;
     const chatContainer = shadow?.querySelector(".chat-container");
     if (chatContainer) chatContainer.style.height = "100vh";
 
     isFullHeight = true;
+
+    // Hide the trigger button when the panel is active
     toggleAssistantButton(false);
   }
 
@@ -286,6 +308,8 @@
     panelHost.style.display = "none";
     panelHost.style.transform = "translateY(100%)";
     panelHost.style.opacity = "0";
+
+    // Bring back the floating trigger button
     toggleAssistantButton(true);
     isFullHeight = true;
   }
@@ -306,12 +330,14 @@
     const chatContainer = shadow.querySelector(".chat-container");
 
     if (isFullHeight) {
+      // Shrink to bottom half
       panelHost.style.height = "50vh";
       chatContainer && (chatContainer.style.height = "50vh");
       panelHost.style.top = "auto";
       panelHost.style.bottom = "0";
       isFullHeight = false;
     } else {
+      // Expand to full height
       panelHost.style.height = "100%";
       chatContainer && (chatContainer.style.height = "100vh");
       panelHost.style.top = "0";
@@ -322,8 +348,9 @@
 
   /**
    * Sends a message to toggle the assistant button visibility.
+   * Used to coordinate between the chat panel state and the floating button state.
    * 
-   * @param {boolean} show - True to show the button, false to hide the button.
+   * * @param {boolean} show - True to show the button, false to hide the button.
    */
   function toggleAssistantButton(show) {
     window.postMessage({ type: "TOGGLE_ASSISTANT_BUTTON", show }, "*");
