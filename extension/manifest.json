@@ -9,7 +9,8 @@
     "128": "icons/icon-128.png"
   },
   "host_permissions": [
-    "*://calendar.google.com/*"
+    "*://calendar.google.com/*",
+    "http://localhost:8080/*"
   ],
   "permissions": [
     "activeTab", 
@@ -17,7 +18,8 @@
     "storage"
   ],
   "background": {
-    "service_worker": "background.js" 
+    "service_worker": "background.js", 
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -36,6 +38,15 @@
         "components/chat-panel/panel.css",
         "components/chat-panel/global.css"
       ]
+    },
+    {
+      "matches": [
+        "http://localhost:8080/api/auth/callback*"
+      ],
+      "run_at": "document_end",
+      "js": [
+        "scripts/oauthCallback.js"
+      ]
     }
   ],
   "web_accessible_resources": [
@@ -43,10 +54,8 @@
       "resources": [
         "components/chat-panel/*",
         "components/assistant-button/*",
-        "assets/*",
         "assets/**/*",
         "icons/*",
-        "components/chat-panel/config.json",
         "scripts/panel.js"
       ],
       "matches": [
