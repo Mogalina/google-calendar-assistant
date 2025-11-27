@@ -72,8 +72,8 @@
         const maxX = window.innerWidth - rect.width;
         const maxY = window.innerHeight - rect.height;
 
-        const newLeft = Math.max(0,Math.min(positionPercentX * window.innerWidth, maxX));
-        const newTop = Math.max(0,Math.min(positionPercentY * window.innerHeight, maxY));
+        const newLeft = Math.max(0, Math.min(positionPercentX * window.innerWidth, maxX));
+        const newTop = Math.max(0, Math.min(positionPercentY * window.innerHeight, maxY));
 
         assistantButtonWrapper.style.left = `${newLeft}px`;
         assistantButtonWrapper.style.top = `${newTop}px`;
