@@ -59,6 +59,31 @@
 
     const MOVE_THRESHOLD = 5;
 
+    // Store position as percentages for responsive behavior
+    let positionPercentX = null;
+    let positionPercentY = null;
+
+    /**
+     * Update button position based on stored percentages.
+     */
+    const updatePositionFromPercentages = () => {
+      if (positionPercentX !== null && positionPercentY !== null) {
+        const rect = assistantButtonWrapper.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width;
+        const maxY = window.innerHeight - rect.height;
+
+        const newLeft = Math.max(0, Math.min(positionPercentX * window.innerWidth, maxX));
+        const newTop = Math.max(0, Math.min(positionPercentY * window.innerHeight, maxY));
+
+        assistantButtonWrapper.style.left = `${newLeft}px`;
+        assistantButtonWrapper.style.top = `${newTop}px`;
+        assistantButtonWrapper.style.bottom = "unset";
+        assistantButtonWrapper.style.right = "unset";
+      }
+    };
+
+    window.addEventListener("resize", updatePositionFromPercentages);
+
     /**
      * Handles the 'pointerdown' event to initiate a drag.
      * @param {PointerEvent} e - The pointer event object.
@@ -97,6 +122,7 @@
      */
     const onPointerMove = (e) => {
       e.preventDefault();
+
       const dx = Math.abs(e.clientX - startX);
       const dy = Math.abs(e.clientY - startY);
 
@@ -104,16 +130,20 @@
         isMoving = true;
         hasMoved = true;
       }
+
       if (hasMoved) {
         let newLeft = e.clientX - offsetX;
         let newTop = e.clientY - offsetY;
 
         const rect = assistantButtonWrapper.getBoundingClientRect();
-        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
-        newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
+        newLeft = Math.max(0,Math.min(newLeft, window.innerWidth - rect.width));
+        newTop = Math.max(0,Math.min(newTop, window.innerHeight - rect.height));
 
         assistantButtonWrapper.style.left = `${newLeft}px`;
         assistantButtonWrapper.style.top = `${newTop}px`;
+
+        positionPercentX = newLeft / window.innerWidth;
+        positionPercentY = newTop / window.innerHeight;
       }
     };
 
@@ -124,6 +154,12 @@
 
       assistantButtonWrapper.style.cursor = "grab";
       assistantButtonWrapper.style.userSelect = "unset";
+
+      if (hasMoved) {
+        const rect = assistantButtonWrapper.getBoundingClientRect();
+        positionPercentX = rect.left / window.innerWidth;
+        positionPercentY = rect.top / window.innerHeight;
+      }
 
       setTimeout(() => {
         isMoving = false;
