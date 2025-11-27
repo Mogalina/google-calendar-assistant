@@ -80,6 +80,9 @@
     const clearChatButton = get("clear-chat-button");
     const resizeChatButton = get("resize-chat-button");
     const initialTimeEl = get("initial-time");
+    const smartSuggestionBtn = root.querySelector(".dropdown-item");
+    const suggestionTag = get("suggestion-tag");
+    const removeSuggestion = get("remove-suggestion");
 
     // Set initial timestamp in the UI header
     if (initialTimeEl) {
@@ -405,6 +408,17 @@
         if (!document.getElementById("mode-dropdown").contains(e.target)) {
           dropdownMenu.style.display = "none";
         }
+      });
+
+      // Display suggestion instrument tag
+      smartSuggestionBtn.addEventListener("click", () => {
+        suggestionTag.style.display = "flex"; 
+        dropdownMenu.style.display = "none";  
+      });
+
+      // Remove suggestion instrument tag
+      removeSuggestion.addEventListener("click", () => {
+        suggestionTag.style.display = "none";
       });
     }
 
