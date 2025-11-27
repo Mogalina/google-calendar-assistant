@@ -280,6 +280,33 @@
   height: 20px;
 }
 
+.suggestion-tag {
+  display: none;                      
+  background: #e3f2fd;                
+  color: #0b57d0;                     
+  border: 1px solid #bbdefb;  
+  box-shadow: 0px 2px 4px #bbdefb;        
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  width: fit-content;
+  margin-bottom: 4px;
+  margin-left: 10px;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+.remove-suggestion {
+  cursor: pointer;
+  font-weight: bold;
+  color: #0b57d0;
+}
+
+.remove-suggestion:hover {
+  color: #003c9b;
+}
+
 .chat-input-area {
   padding: 20px;
   max-height: 300px;

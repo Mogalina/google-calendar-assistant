@@ -62,6 +62,9 @@
       const clearChatButton = get("clear-chat-button");
       const resizeChatButton = get("resize-chat-button");
       const initialTimeEl = get("initial-time");
+      const smartSuggestionBtn = root.querySelector(".dropdown-item");
+      const suggestionTag = get("suggestion-tag");
+      const removeSuggestion = get("remove-suggestion");
 
        // Set initial timestamp
       if (initialTimeEl) {
@@ -321,9 +324,15 @@
         }
       });
 
-      // if (modeBtn && dropdown) {
-        
-      // }
+      smartSuggestionBtn.addEventListener("click", () => {
+        suggestionTag.style.display = "flex"; 
+        dropdownMenu.style.display = "none";  
+      });
+
+      removeSuggestion.addEventListener("click", () => {
+        suggestionTag.style.display = "none";
+      });
+
 
       initializeChat();
 
