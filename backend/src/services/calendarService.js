@@ -209,3 +209,58 @@ export async function searchEvents(
 
   return response.data.items || [];
 }
+
+/**
+ * Creates a new calendar for the user.
+ * Uses Google Calendar API to generate a standalone calendar container
+ * which can later hold temporary or generated events.
+ * 
+ * @param {string} accessToken - OAuth2 access token for Google API.
+ * @param {string} summary - Display name of the new calendar.
+ * @returns {Promise<Object>} Created calendar object (contains calendarId).
+ * 
+ * @throws {Error} If calendar creation fails.
+ */
+export async function createCalendar(accessToken, summary) {
+  try {
+    // Create an authenticated Google Calendar client
+    const calendar = createCalendarClient(accessToken);
+
+    // Insert a new calendar using Google Calendar API
+    const response = await calendar.calendars.insert({
+      requestBody: { summary },
+    });
+
+    return response.data; // calendarId, summary, etc.
+  } catch (error) {
+    console.error("Error creating calendar:", error.response?.data || error);
+    throw new Error("Failed to create calendar");
+  }
+}
+
+/**
+ * Deletes a calendar owned by the user.
+ * This permanently removes the calendar and its events from Google Calendar.
+ * 
+ * @param {string} accessToken - OAuth2 access token for Google API.
+ * @param {string} calendarId - Identifier of the calendar to delete.
+ * @returns {Promise<Object>} Success confirmation object.
+ * 
+ * @throws {Error} If calendar deletion fails.
+ */
+export async function deleteCalendar(accessToken, calendarId) {
+  try {
+    // Create an authenticated Google Calendar client
+    const calendar = createCalendarClient(accessToken);
+
+    // Remove the calendar using Google Calendar API
+    await calendar.calendars.delete({
+      calendarId,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting calendar:", error.response?.data || error);
+    throw new Error("Failed to delete calendar");
+  }
+}
