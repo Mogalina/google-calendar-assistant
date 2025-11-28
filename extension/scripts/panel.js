@@ -359,8 +359,8 @@
         // We want partial results so we can show live text
         recognition.interimResults = true;
 
-        // We only need one phrase per click, not continuous dictation
-        recognition.continuous = false;
+        // Keep listening until the user stops it
+        recognition.continuous = true;
 
         recognition.addEventListener("result", handleSpeechResult);
         recognition.addEventListener("error", handleSpeechError);
@@ -405,7 +405,16 @@
 
       // Called when the recognizer stops
       function handleSpeechEnd() {
-        isRecording = false;
+        if (isRecording && recognition) {
+          try {
+            recognition.start();
+          } catch (err) {
+            console.warn("Could not restart recognition:", err);
+            isRecording = false;
+          }
+          updateMicrophoneState();
+          return;
+        }
 
         // Use the final transcript if available, otherwise whatever is in the input
         const text = (finalTranscript || (chatInput ? chatInput.value : "")).trim();
@@ -476,6 +485,7 @@
           if (microphoneButton.disabled) return;
 
           if (isRecording) {
+            isRecording = false;
             recognition.stop();
           } else {
             isRecording = true;
