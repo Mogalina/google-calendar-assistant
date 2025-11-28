@@ -264,3 +264,126 @@ export async function deleteCalendar(accessToken, calendarId) {
     throw new Error("Failed to delete calendar");
   }
 }
+
+/**
+ * Clones events from one calendar to another within a given time interval.
+ * For each cloned event, stores the original event id in
+ * extendedProperties.private.originalEventId so we can track lineage later.
+ * 
+ * Events are fetched from sourceCalendarId between startInterval and endInterval,
+ * then re-inserted into targetCalendarId without attendees and with adjusted metadata.
+ * 
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} sourceCalendarId - Identifier of the source calendar (e.g. "primary").
+ * @param {string} targetCalendarId - Identifier of the target (shadow) calendar.
+ * @param {string} startInterval - ISO date-time string for interval start.
+ * @param {string} endInterval - ISO date-time string for interval end.
+ * @returns {Promise<Array>} Array of cloned events created in the target calendar.
+ */
+export async function cloneEvents(
+  accessToken,
+  sourceCalendarId,
+  targetCalendarId,
+  startInterval,
+  endInterval
+) {
+  if (!sourceCalendarId) {
+    throw new Error("Source calendar identifier is required.");
+  }
+
+  if (!targetCalendarId) {
+    throw new Error("Target calendar identifier is required.");
+  }
+
+  if (!startInterval || !endInterval) {
+    throw new Error("Both startInterval and endInterval are required.");
+  }
+
+  const startDate = new Date(startInterval);
+  const endDate = new Date(endInterval);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    throw new Error("Invalid date format for startInterval or endInterval.");
+  }
+
+  if (startDate >= endDate) {
+    throw new Error("Invalid interval: startInterval must be before endInterval.");
+  }
+
+  const timeMin = startDate.toISOString();
+  const timeMax = endDate.toISOString();
+
+  // Create an authenticated Google Calendar client
+  const calendar = createCalendarClient(accessToken);
+
+  // List all events from source calendar in the given interval
+  const allEvents = [];
+  let pageToken;
+
+  do {
+    const response = await calendar.events.list({
+      calendarId: sourceCalendarId,
+      timeMin,
+      timeMax,
+      singleEvents: true, // Doesn't return recurring event containers
+      orderBy: "startTime",
+      maxResults: 30,
+      pageToken,
+    });
+
+    const items = response.data.items || [];
+    allEvents.push(...items);
+    pageToken = response.data.nextPageToken;
+  } while (pageToken);
+
+  const clonedEvents = [];
+
+  // Clone each event into the target calendar
+  for (const originalEvent of allEvents) {
+    // Skip cancelled events
+    if (originalEvent.status === "cancelled") {
+      continue;
+    }
+
+    // Deep clone the original event object
+    const cloned = JSON.parse(JSON.stringify(originalEvent));
+
+    // Ensure extendedProperties.private exists
+    if (!cloned.extendedProperties) {
+      cloned.extendedProperties = {};
+    }
+    if (!cloned.extendedProperties.private) {
+      cloned.extendedProperties.private = {};
+    }
+
+    // Store lineage information
+    cloned.extendedProperties.private.originalEventId = originalEvent.id;
+
+    // Remove fields that must not be reused on insert
+    delete cloned.id;
+    delete cloned.htmlLink;
+    delete cloned.iCalUID;
+    delete cloned.etag;
+    delete cloned.created;
+    delete cloned.updated;
+    delete cloned.sequence;
+    delete cloned.recurringEventId;
+    delete cloned.originalStartTime;
+    delete cloned.status; // let Google set default status for the new event
+    delete cloned.attendees;
+    delete cloned.hangoutLink;
+    delete cloned.conferenceData;
+
+    // Insert the cloned event into the target calendar
+    const insertResponse = await calendar.events.insert({
+      calendarId: targetCalendarId,
+      requestBody: cloned,
+      sendUpdates: "none", // prevent email spam
+    });
+
+    clonedEvents.push(insertResponse.data);
+  }
+
+  return clonedEvents;
+}
+
