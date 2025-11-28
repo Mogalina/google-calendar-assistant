@@ -19,8 +19,7 @@ const oauth2Client = new google.auth.OAuth2(
  * Scopes define what permissions your app is requesting from the user.
  */
 const SCOPES = [
-  'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/calendar.readonly'
+  'https://www.googleapis.com/auth/calendar'
 ];
 
 /**
