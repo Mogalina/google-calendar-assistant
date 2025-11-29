@@ -8,6 +8,25 @@
 
   <div class="panel-container" id="panel-container">
     <div class="chat-container" id="chat-container">
+      <div id="gca-consent-overlay" class="gca-consent-overlay hidden">
+        <div class="gca-consent-modal" id="gca-consent-modal">
+          <h2>Use your Google Calendar?</h2>
+          <p>
+            This extension needs access to your Google Calendar to read and
+            create events in order to help you manage your schedule.
+          </p>
+          <ul>
+            <li>Read your existing events</li>
+            <li>Create and update events you request</li>
+            <li>Suggest better time slots</li>
+          </ul>
+          <div class="gca-consent-actions">
+            <button id="gca-consent-accept">Yes, I agree</button>
+            <button id="gca-consent-decline">No, close assistant</button>
+          </div>
+        </div>
+      </div>
+
       <div class="chat-header">
         <div class="chat-header-title">
           <div class="chat-icon-container">
@@ -64,8 +83,8 @@
 
       <div class="chat-input-area">
         <div class="suggestion-tag" id="suggestion-tag">
-            <span class="remove-suggestion" id="remove-suggestion">×</span>
-            Smart Reschedule
+          <span class="remove-suggestion" id="remove-suggestion">×</span>
+          Smart Reschedule
         </div>
         <form class="input-form" id="chat-form">
           <div class="dropdown" id="mode-dropdown">
@@ -79,7 +98,10 @@
 
             <div class="dropdown-menu" id="dropdown-menu">
               <button class="dropdown-item">
-                <img class="dropdown-item-icon" src="../../assets/images/smart-button.png"/>
+                <img
+                  class="dropdown-item-icon"
+                  src="../../assets/images/smart-button.png"
+                />
                 <span>Smart Reschedule</span>
               </button>
             </div>

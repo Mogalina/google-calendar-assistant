@@ -2,7 +2,7 @@
  * @fileoverview
  * Initializes and manages the chat panel interface for the Google Calendar Assistant.
  * It dynamically connects to the backend API, handles messages between the webpage and the
- * extension content script, manages chat interactions, and controls user interface behaviors like 
+ * extension content script, manages chat interactions, and controls user interface behaviors like
  * resizing, clearing, and closing the chat window.
  */
 
@@ -14,14 +14,30 @@
   // Check if initialization has already happened to prevent attaching multiple listeners
   if (window.__panelInitialized) return;
   window.__panelInitialized = true;
-  
+
   initializePanel();
 
   /**
-   * Main setup function that encapsulates all panel logic, event listeners, and DOM manipulation to 
+   * Main setup function that encapsulates all panel logic, event listeners, and DOM manipulation to
    * ensure scope isolation.
    */
   function initializePanel() {
+    const GCA_CONSENT_KEY = "gca_calendar_consent";
+
+    function getCalendarConsent() {
+      try {
+        return window.localStorage.getItem(GCA_CONSENT_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function setCalendarConsent(value) {
+      try {
+        window.localStorage.setItem(GCA_CONSENT_KEY, value ? "true" : "false");
+      } catch (e) {}
+    }
+
     /**
      * Requests a valid access token for Google Calendar Assistant.
      * The background script receives this and performs token retrieval or refresh.
@@ -33,7 +49,7 @@
         function listener(event) {
           // Ensure security by checking the source
           if (event.source !== window) return;
-          
+
           // Filter for the specific response type
           if (event.data?.type !== "GCA_ACCESS_TOKEN_RESPONSE") return;
 
@@ -60,7 +76,7 @@
       const host = document.querySelector("#assistant-chat-panel");
       root = host?.shadowRoot || host?._shadowRoot;
     }
-    
+
     // If no shadow root is found, initialization fails because we cannot access UI elements
     if (!(root instanceof ShadowRoot)) {
       throw new Error("Cannot initialize chat panel");
@@ -83,6 +99,34 @@
     const smartSuggestionBtn = root.querySelector(".dropdown-item");
     const suggestionTag = get("suggestion-tag");
     const removeSuggestion = get("remove-suggestion");
+    const consentOverlay = get("gca-consent-overlay");
+    const consentAccept = get("gca-consent-accept");
+    const consentDecline = get("gca-consent-decline");
+
+    async function initPrivacyConsent() {
+      if (!consentOverlay || !consentAccept || !consentDecline) {
+        return;
+      }
+
+      if (!getCalendarConsent()) {
+        consentOverlay.classList.remove("hidden");
+      } else {
+        consentOverlay.classList.add("hidden");
+      }
+
+      consentAccept.addEventListener("click", () => {
+        setCalendarConsent(true);
+        consentOverlay.classList.add("hidden");
+      });
+
+      consentDecline.addEventListener("click", () => {
+        setCalendarConsent(false);
+        if (root && root.host) {
+          root.host.style.display = "none";
+        }
+        sendMessageToMainWindow("CLOSE_CHAT_PANEL");
+      });
+    }
 
     // Set initial timestamp in the UI header
     if (initialTimeEl) {
@@ -92,7 +136,7 @@
     /**
      * Sends a custom message from this script to the top-level window.
      * Used to communicate with other parts of the extension.
-     * 
+     *
      * @param {string} type - The message type identifier.
      */
     function sendMessageToMainWindow(type) {
@@ -102,7 +146,7 @@
     /**
      * Saves messages to storage via content script.
      * Delegates the actual Chrome storage API call to the background script.
-     * 
+     *
      * @param {Array} messages
      */
     async function saveMessages(messages) {
@@ -112,7 +156,7 @@
     /**
      * Loads previously saved messages from storage.
      * Wraps the async message passing in a Promise.
-     * 
+     *
      * @returns {Promise<Array>}
      */
     async function loadMessages() {
@@ -129,7 +173,8 @@
       });
     }
 
-    const WELCOME_MESSAGE = "Hello! I'm your Google Calendar assistant. How can I help you today?";
+    const WELCOME_MESSAGE =
+      "Hello! I'm your Google Calendar assistant. How can I help you today?";
 
     /**
      * Loads saved conversation and populates the chat.
@@ -153,7 +198,6 @@
             timestamp: msg.timestamp,
           });
         }
-
       } else {
         // Show initial welcome message if history is empty
         await appendMessage("ai", WELCOME_MESSAGE, {
@@ -166,7 +210,7 @@
     /**
      * Formats conversation history for Gemini API.
      * Translates local message format to the specific structure required by the backend LLM.
-     * 
+     *
      * @returns {Array} Formatted history array.
      */
     async function getConversationHistory() {
@@ -186,7 +230,7 @@
 
     /**
      * Appends a message to the chat interface.
-     * 
+     *
      * @param {string} sender - The sender of the message (user or assistant).
      * @param {string} text - The message content.
      * @param {object} [options] - Additional options.
@@ -255,13 +299,21 @@
         const msg = chatInput.value.trim();
         if (!msg) return;
 
+        // Check for calendar consent
+        if (!getCalendarConsent()) {
+          if (consentOverlay) {
+            consentOverlay.classList.remove("hidden");
+          }
+          return;
+        }
+
         // Display user message
         appendMessage("user", msg);
         chatInput.value = "";
 
         // Prepare AI context (history)
         const history = await getConversationHistory();
-        
+
         // Show loading indicator
         appendMessage("ai", "", { pulse: true });
 
@@ -272,13 +324,19 @@
           // Handle unauthenticated state
           if (gcaTokenResp.status === "need_auth") {
             // If user needs to authenticate, inform them in the chat and start auth flow
-            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+            const lastAiBubble = chatMessages.querySelector(
+              ".message.ai .message-bubble.pulse"
+            );
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
-              lastAiBubble.textContent = "Please connect your Google account to use the Calendar Assistant.";
+              lastAiBubble.textContent =
+                "Please connect your Google account to use the Calendar Assistant.";
               lastAiBubble.style.color = "inherit";
             } else {
-              await appendMessage("ai", "Please connect your Google account to use the Calendar Assistant.");
+              await appendMessage(
+                "ai",
+                "Please connect your Google account to use the Calendar Assistant."
+              );
             }
 
             startGoogleAuthFlow();
@@ -288,13 +346,19 @@
           // Handle authenitication errors
           if (gcaTokenResp.status !== "success") {
             console.error("Could not obtain access token:", gcaTokenResp);
-            const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+            const lastAiBubble = chatMessages.querySelector(
+              ".message.ai .message-bubble.pulse"
+            );
             if (lastAiBubble) {
               lastAiBubble.classList.remove("pulse");
-              lastAiBubble.textContent = "Something went wrong with Google authentication. Please try again.";
+              lastAiBubble.textContent =
+                "Something went wrong with Google authentication. Please try again.";
               lastAiBubble.style.color = "inherit";
             } else {
-              await appendMessage("ai", "Something went wrong with Google authentication. Please try again.");
+              await appendMessage(
+                "ai",
+                "Something went wrong with Google authentication. Please try again."
+              );
             }
             return;
           }
@@ -324,7 +388,9 @@
           const aiMessage = data.output || data.text || "(No response)";
 
           // Replace pulsing bubble with final assistant text response
-          const lastAiBubble = chatMessages.querySelector(".message.ai .message-bubble.pulse");
+          const lastAiBubble = chatMessages.querySelector(
+            ".message.ai .message-bubble.pulse"
+          );
           if (lastAiBubble) {
             lastAiBubble.classList.remove("pulse");
             lastAiBubble.textContent = aiMessage;
@@ -337,16 +403,17 @@
               timestamp: new Date().toISOString(),
             });
             await saveMessages(existing);
-
           } else {
             appendMessage("ai", aiMessage);
           }
-
         } catch (error) {
-          const lastAiBubble = chatMessages.querySelector( ".message.ai .message-bubble.pulse");
+          const lastAiBubble = chatMessages.querySelector(
+            ".message.ai .message-bubble.pulse"
+          );
           if (lastAiBubble) {
             lastAiBubble.classList.remove("pulse");
-            lastAiBubble.textContent = "Something went wrong. Please try again.";
+            lastAiBubble.textContent =
+              "Something went wrong. Please try again.";
             lastAiBubble.style.color = "inherit";
           } else {
             appendMessage("ai", "Something went wrong. Please try again.");
@@ -412,8 +479,8 @@
 
       // Display suggestion instrument tag
       smartSuggestionBtn.addEventListener("click", () => {
-        suggestionTag.style.display = "flex"; 
-        dropdownMenu.style.display = "none";  
+        suggestionTag.style.display = "flex";
+        dropdownMenu.style.display = "none";
       });
 
       // Remove suggestion instrument tag
@@ -421,6 +488,9 @@
         suggestionTag.style.display = "none";
       });
     }
+
+    // Initialize privacy calendar consent modal
+    initPrivacyConsent();
 
     // Boot up the chat (load history or welcome message)
     initializeChat();
@@ -455,7 +525,10 @@
           type,
           (e) => {
             const active = root.activeElement || document.activeElement;
-            if (chatInput && (active === chatInput || chatInput.contains(e.target))) {
+            if (
+              chatInput &&
+              (active === chatInput || chatInput.contains(e.target))
+            ) {
               e.stopPropagation();
               e.stopImmediatePropagation();
             }
@@ -465,7 +538,9 @@
       });
     } else {
       // If no shadow root found, skip containment setup
-      console.info("Skipping event containment because no shadow root was found.");
+      console.info(
+        "Skipping event containment because no shadow root was found."
+      );
     }
   }
 })();
