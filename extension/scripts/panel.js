@@ -24,6 +24,11 @@
   function initializePanel() {
     const GCA_CONSENT_KEY = "gca_calendar_consent";
 
+    /**
+     * Retrieves the user's stored privacy consent decision.
+     *
+     * @returns {boolean} True if the user accepted calendar access, false otherwise.
+     */
     function getCalendarConsent() {
       try {
         return window.localStorage.getItem(GCA_CONSENT_KEY) === "true";
@@ -32,6 +37,12 @@
       }
     }
 
+    /**
+     * Saves the user's privacy consent decision.
+     * Persists the consent flag in localStorage
+     *
+     * @param {boolean} value - The user's consent decision (true = accepted, false = declined).
+     */
     function setCalendarConsent(value) {
       try {
         window.localStorage.setItem(GCA_CONSENT_KEY, value ? "true" : "false");
@@ -103,6 +114,12 @@
     const consentAccept = get("gca-consent-accept");
     const consentDecline = get("gca-consent-decline");
 
+    /**
+     * Initializes and manages the privacy consent modal for the extension.
+     *
+     * Displays the consent dialog when no previous decision exists in localStorage,
+     * and attaches event listeners to handle the user's choice.
+     */
     async function initPrivacyConsent() {
       if (!consentOverlay || !consentAccept || !consentDecline) {
         return;
