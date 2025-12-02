@@ -212,13 +212,12 @@ export async function searchEvents(
 
 /**
  * Creates a new calendar for the user.
- * Uses Google Calendar API to generate a standalone calendar container
- * which can later hold temporary or generated events.
+ * Uses Google Calendar API to generate a standalone calendar container which can later hold
+ * temporary or generated events.
  * 
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} summary - Display name of the new calendar.
  * @returns {Promise<Object>} Created calendar object (contains calendarId).
- * 
  * @throws {Error} If calendar creation fails.
  */
 export async function createCalendar(accessToken, summary) {
@@ -231,7 +230,8 @@ export async function createCalendar(accessToken, summary) {
       requestBody: { summary },
     });
 
-    return response.data; // calendarId, summary, etc.
+    return response.data;
+
   } catch (error) {
     console.error("Error creating calendar:", error.response?.data || error);
     throw new Error("Failed to create calendar");
@@ -245,7 +245,6 @@ export async function createCalendar(accessToken, summary) {
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} calendarId - Identifier of the calendar to delete.
  * @returns {Promise<Object>} Success confirmation object.
- * 
  * @throws {Error} If calendar deletion fails.
  */
 export async function deleteCalendar(accessToken, calendarId) {
@@ -259,6 +258,7 @@ export async function deleteCalendar(accessToken, calendarId) {
     });
 
     return { success: true };
+
   } catch (error) {
     console.error("Error deleting calendar:", error.response?.data || error);
     throw new Error("Failed to delete calendar");
@@ -267,14 +267,14 @@ export async function deleteCalendar(accessToken, calendarId) {
 
 /**
  * Clones events from one calendar to another within a given time interval.
- * For each cloned event, stores the original event id in
- * extendedProperties.private.originalEventId so we can track lineage later.
+ * For each cloned event, stores the original event id in 
+ * `extendedProperties.private.originalEventId` so we can track lineage later.
  * 
- * Events are fetched from sourceCalendarId between startInterval and endInterval,
- * then re-inserted into targetCalendarId without attendees and with adjusted metadata.
+ * Events are fetched from `sourceCalendarId` between `startInterval` and `endInterval`, then
+ * re-inserted into `targetCalendarId` without attendees and with adjusted metadata.
  * 
  * @param {string} accessToken - OAuth2 access token.
- * @param {string} sourceCalendarId - Identifier of the source calendar (e.g. "primary").
+ * @param {string} sourceCalendarId - Identifier of the source calendar.
  * @param {string} targetCalendarId - Identifier of the target (shadow) calendar.
  * @param {string} startInterval - ISO date-time string for interval start.
  * @param {string} endInterval - ISO date-time string for interval end.
@@ -348,7 +348,7 @@ export async function cloneEvents(
     // Deep clone the original event object
     const cloned = JSON.parse(JSON.stringify(originalEvent));
 
-    // Ensure extendedProperties.private exists
+    // Ensure `extendedProperties.private` exists
     if (!cloned.extendedProperties) {
       cloned.extendedProperties = {};
     }
@@ -369,7 +369,7 @@ export async function cloneEvents(
     delete cloned.sequence;
     delete cloned.recurringEventId;
     delete cloned.originalStartTime;
-    delete cloned.status; // let Google set default status for the new event
+    delete cloned.status;
     delete cloned.attendees;
     delete cloned.hangoutLink;
     delete cloned.conferenceData;
@@ -378,7 +378,7 @@ export async function cloneEvents(
     const insertResponse = await calendar.events.insert({
       calendarId: targetCalendarId,
       requestBody: cloned,
-      sendUpdates: "none", // prevent email spam
+      sendUpdates: "none", // Prevent email spam
     });
 
     clonedEvents.push(insertResponse.data);
@@ -449,11 +449,11 @@ export async function initializeShadowSession(accessToken, startStr, endStr) {
 
   // Clone events from primary into the shadow calendar
   const clonedEvents = await cloneEvents(
-    accessToken,
-    "primary",              // sourceCalendarId
-    shadowCalendarId,       // targetCalendarId
-    start.toISOString(),    // startInterval
-    end.toISOString()       // endInterval
+    accessToken,            // User's access token
+    "primary",              // Source calendar id
+    shadowCalendarId,       // Shadow calendar id
+    start.toISOString(),    // Start time of interval
+    end.toISOString()       // End time of interval
   );
 
   // Return the shadow calendar id and the initial state of events
