@@ -600,8 +600,8 @@
 }
 
 .gca-consent-modal {
-  background: #202124;
-  color: #e8eaed;
+  background: var(--bg-white);
+  color: var(--text-primary);
   padding: 20px 24px;
   border-radius: 12px;
   max-width: 420px;
@@ -632,6 +632,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 16px;
 }
 
 #gca-consent-accept,
@@ -641,14 +642,28 @@
   border: none;
   padding: 6px 12px;
   font-size: 13px;
+  font-family: inherit !important;
+  width: 50%;
+  background-color: var(--bg-white);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-#gca-consent-accept {
-  background-color: #1a73e8;
-  color: white;
+#gca-consent-accept:hover,
+#gca-consent-decline:hover {
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
 }
 
-#gca-consent-decline {
-  background-color: #3c4043;
-  color: white;
+#gca-consent-accept:active,
+#gca-consent-decline:active {
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
+}
+
+#gca-consent-accept:focus,
+#gca-consent-decline:focus {
+  outline: none;
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
 }

@@ -39,7 +39,6 @@
 
     /**
      * Saves the user's privacy consent decision.
-     * Persists the consent flag in localStorage
      *
      * @param {boolean} value - The user's consent decision (true = accepted, false = declined).
      */
@@ -117,8 +116,8 @@
     /**
      * Initializes and manages the privacy consent modal for the extension.
      *
-     * Displays the consent dialog when no previous decision exists in localStorage,
-     * and attaches event listeners to handle the user's choice.
+     * Displays the consent dialog when no previous decision exists in localStorage, and attaches 
+     * event listeners to handle the user's choice.
      */
     async function initPrivacyConsent() {
       if (!consentOverlay || !consentAccept || !consentDecline) {
@@ -149,6 +148,7 @@
     if (initialTimeEl) {
       initialTimeEl.textContent = new Date().toLocaleTimeString();
     }
+  
 
     /**
      * Sends a custom message from this script to the top-level window.
@@ -309,6 +309,17 @@
 
     // Handle chat form submission when user sends message
     if (chatForm && chatInput && chatMessages) {
+
+      // Allow to send message when pressing Enter (without Shift)
+      chatInput.addEventListener("keydown", (e) => {
+        if (e.key == "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          chatForm.dispatchEvent(
+            new Event("submit", { cancelable: true, bubbles: true })
+          );
+        }
+      });
+      
       chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
@@ -542,10 +553,9 @@
           type,
           (e) => {
             const active = root.activeElement || document.activeElement;
-            if (
-              chatInput &&
-              (active === chatInput || chatInput.contains(e.target))
-            ) {
+            
+            if (chatInput &&(active === chatInput || chatInput.contains(e.target))) {
+              if(e.key=="Enter") return;
               e.stopPropagation();
               e.stopImmediatePropagation();
             }
@@ -555,9 +565,7 @@
       });
     } else {
       // If no shadow root found, skip containment setup
-      console.info(
-        "Skipping event containment because no shadow root was found."
-      );
+      console.info("Skipping event containment because no shadow root was found.");
     }
   }
 })();
