@@ -386,3 +386,79 @@ export async function cloneEvents(
 
   return clonedEvents;
 }
+
+/**
+ * Initializes a shadow session for a given time interval.
+ * 
+ * - Parses and validates the requested interval.
+ * - Guards against intervals longer than 7 days.
+ * - Creates a new shadow calendar.
+ * - Clones events from the primary calendar into the shadow calendar,
+ *   keeping lineage via extendedProperties.private.originalEventId.
+ * 
+ * @param {string} accessToken - OAuth2 access token.
+ * @param {string} startStr - ISO date-time string for interval start.
+ * @param {string} endStr - ISO date-time string for interval end.
+ * @returns {Promise<{ shadowCalendarId: string, events: Array }>}
+ *          The shadow calendar id and the cloned events.
+ * 
+ * @throws {Error} If the interval is invalid or longer than 7 days.
+ */
+export async function initializeShadowSession(accessToken, startStr, endStr) {
+  if (!startStr || !endStr) {
+    const error = new Error("Both start and end date strings are required.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    const error = new Error("Invalid date format for start or end.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (start >= end) {
+    const error = new Error("Invalid interval: start must be before end.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Guard: interval must not exceed 7 days
+  const diffMs = end.getTime() - start.getTime();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+  if (diffMs > sevenDaysMs) {
+    const error = new Error("Session interval cannot exceed 7 days.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Create a shadow calendar
+  const summary = "Shadow Session Calendar";
+  const shadowCalendar = await createCalendar(accessToken, summary);
+  const shadowCalendarId = shadowCalendar.id;
+
+  if (!shadowCalendarId) {
+    const error = new Error("Failed to obtain shadow calendar id.");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  // Clone events from primary into the shadow calendar
+  const clonedEvents = await cloneEvents(
+    accessToken,            // User's access token
+    "primary",              // Source calendar id
+    shadowCalendarId,       // Shadow calendar id
+    start.toISOString(),    // Start time of interval
+    end.toISOString()       // End time of interval
+  );
+
+  // Return the shadow calendar id and the initial state of events
+  return {
+    shadowCalendarId,
+    events: clonedEvents,
+  };
+}
