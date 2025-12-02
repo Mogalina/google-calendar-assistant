@@ -250,7 +250,7 @@
     // Handle chat form submission when user sends message
     if (chatForm && chatInput && chatMessages) {
 
-      //Allow ENTER to send message
+      // Allow to send message when pressing Enter (without Shift)
       chatInput.addEventListener("keydown", (e) => {
         if (e.key == "Enter" && !e.shiftKey) {
           e.preventDefault();
