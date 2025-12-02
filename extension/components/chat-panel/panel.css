@@ -239,7 +239,7 @@
 
 .dropdown-menu {
   position: absolute;
-  bottom: 45px;           
+  bottom: 45px;
   left: 0;
   background: #ffffff;
   border: 1px solid #dcdcdc;
@@ -247,7 +247,7 @@
   padding: 5px 5px;
   display: none;
   width: 190px;
-  box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   z-index: 100;
   animation: fadeIn 0.15s ease;
 }
@@ -275,17 +275,17 @@
   background: #f3f3f3;
 }
 
-.dropdown-item-icon{
+.dropdown-item-icon {
   width: 20px;
   height: 20px;
 }
 
 .suggestion-tag {
-  display: none;                      
-  background: #e3f2fd;                
-  color: #0b57d0;                     
-  border: 1px solid #bbdefb;  
-  box-shadow: 0px 2px 4px #bbdefb;        
+  display: none;
+  background: #e3f2fd;
+  color: #0b57d0;
+  border: 1px solid #bbdefb;
+  box-shadow: 0px 2px 4px #bbdefb;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 13px;
@@ -551,8 +551,14 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes messageSlideIn {
@@ -577,4 +583,87 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+.gca-consent-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.gca-consent-overlay.hidden {
+  display: none;
+}
+
+.gca-consent-modal {
+  background: var(--bg-white);
+  color: var(--text-primary);
+  padding: 20px 24px;
+  border-radius: 12px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+}
+
+.gca-consent-modal h2 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.gca-consent-modal p {
+  margin: 0 0 8px 0;
+}
+
+.gca-consent-modal ul {
+  margin: 0 0 12px 16px;
+  padding: 0;
+}
+
+.gca-consent-modal li {
+  margin-bottom: 4px;
+}
+
+.gca-consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#gca-consent-accept,
+#gca-consent-decline {
+  cursor: pointer;
+  border-radius: 4px;
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: inherit !important;
+  width: 50%;
+  background-color: var(--bg-white);
+  border: 1px solid var(--border-light);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#gca-consent-accept:hover,
+#gca-consent-decline:hover {
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
+}
+
+#gca-consent-accept:active,
+#gca-consent-decline:active {
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
+}
+
+#gca-consent-accept:focus,
+#gca-consent-decline:focus {
+  outline: none;
+  background-color: var(--primary-google-calendar-blue);
+  color: var(--bg-white);
 }

@@ -22,6 +22,32 @@
    * ensure scope isolation.
    */
   function initializePanel() {
+    const GCA_CONSENT_KEY = "gca_calendar_consent";
+
+    /**
+     * Retrieves the user's stored privacy consent decision.
+     *
+     * @returns {boolean} True if the user accepted calendar access, false otherwise.
+     */
+    function getCalendarConsent() {
+      try {
+        return window.localStorage.getItem(GCA_CONSENT_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    /**
+     * Saves the user's privacy consent decision.
+     *
+     * @param {boolean} value - The user's consent decision (true = accepted, false = declined).
+     */
+    function setCalendarConsent(value) {
+      try {
+        window.localStorage.setItem(GCA_CONSENT_KEY, value ? "true" : "false");
+      } catch (e) {}
+    }
+
     /**
      * Requests a valid access token for Google Calendar Assistant.
      * The background script receives this and performs token retrieval or refresh.
@@ -83,6 +109,40 @@
     const smartSuggestionBtn = root.querySelector(".dropdown-item");
     const suggestionTag = get("suggestion-tag");
     const removeSuggestion = get("remove-suggestion");
+    const consentOverlay = get("gca-consent-overlay");
+    const consentAccept = get("gca-consent-accept");
+    const consentDecline = get("gca-consent-decline");
+
+    /**
+     * Initializes and manages the privacy consent modal for the extension.
+     *
+     * Displays the consent dialog when no previous decision exists in localStorage, and attaches 
+     * event listeners to handle the user's choice.
+     */
+    async function initPrivacyConsent() {
+      if (!consentOverlay || !consentAccept || !consentDecline) {
+        return;
+      }
+
+      if (!getCalendarConsent()) {
+        consentOverlay.classList.remove("hidden");
+      } else {
+        consentOverlay.classList.add("hidden");
+      }
+
+      consentAccept.addEventListener("click", () => {
+        setCalendarConsent(true);
+        consentOverlay.classList.add("hidden");
+      });
+
+      consentDecline.addEventListener("click", () => {
+        setCalendarConsent(false);
+        if (root && root.host) {
+          root.host.style.display = "none";
+        }
+        sendMessageToMainWindow("CLOSE_CHAT_PANEL");
+      });
+    }
 
     // Set initial timestamp in the UI header
     if (initialTimeEl) {
@@ -267,6 +327,14 @@
         const msg = chatInput.value.trim();
         if (!msg) return;
 
+        // Check for calendar consent
+        if (!getCalendarConsent()) {
+          if (consentOverlay) {
+            consentOverlay.classList.remove("hidden");
+          }
+          return;
+        }
+
         // Display user message
         appendMessage("user", msg);
         chatInput.value = "";
@@ -449,6 +517,9 @@
       });
     }
 
+    // Initialize privacy calendar consent modal
+    initPrivacyConsent();
+
     // Boot up the chat (load history or welcome message)
     initializeChat();
 
@@ -484,7 +555,7 @@
             const active = root.activeElement || document.activeElement;
             
             if (chatInput &&(active === chatInput || chatInput.contains(e.target))) {
-              if(e.key=="Enter") return
+              if(e.key=="Enter") return;
               e.stopPropagation();
               e.stopImmediatePropagation();
             }
@@ -494,9 +565,7 @@
       });
     } else {
       // If no shadow root found, skip containment setup
-      console.info(
-        "Skipping event containment because no shadow root was found."
-      );
+      console.info("Skipping event containment because no shadow root was found.");
     }
   }
 })();
