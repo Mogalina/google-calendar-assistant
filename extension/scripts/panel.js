@@ -22,7 +22,7 @@
    * ensure scope isolation.
    */
   function initializePanel() {
-    const GCA_CONSENT_KEY = "gca_calendar_consent";
+    const GCA_CONSENT_KEY = "gcaCalendarConsent";
 
     /**
      * Retrieves the user's stored privacy consent decision.
