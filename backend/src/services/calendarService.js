@@ -217,8 +217,7 @@ export async function searchEvents(
  * 
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} summary - Display name of the new calendar.
- * @returns {Promise<Object>} Created calendar object (contains calendarId).
- * 
+ * @returns {Promise<Object>} Created calendar object.
  * @throws {Error} If calendar creation fails.
  */
 export async function createCalendar(accessToken, summary) {
@@ -231,7 +230,8 @@ export async function createCalendar(accessToken, summary) {
       requestBody: { summary },
     });
 
-    return response.data; // calendarId, summary, etc.
+    return response.data;
+
   } catch (error) {
     console.error("Error creating calendar:", error.response?.data || error);
     throw new Error("Failed to create calendar");
@@ -245,7 +245,6 @@ export async function createCalendar(accessToken, summary) {
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} calendarId - Identifier of the calendar to delete.
  * @returns {Promise<Object>} Success confirmation object.
- * 
  * @throws {Error} If calendar deletion fails.
  */
 export async function deleteCalendar(accessToken, calendarId) {
@@ -259,6 +258,7 @@ export async function deleteCalendar(accessToken, calendarId) {
     });
 
     return { success: true };
+
   } catch (error) {
     console.error("Error deleting calendar:", error.response?.data || error);
     throw new Error("Failed to delete calendar");
