@@ -115,6 +115,8 @@ config:
     - "Friday afternoon" = from next Friday 12:00 to Friday 23:59
     - "next 3 days" = from NOW to NOW + 3 days
     - **Maximum interval: 7 days**
+    - If you need to create multiple events, do NOT use init_shadow_session — explain limitation in "response" field and suggest creating them one by one.
+    - Use init_shadow_session ONLY for rescheduling/optimizing existing events, NOT for creating new recurring events.
 
     **GATHER_CONTEXT (Retrieve calendar data first)**
     Use this when:
