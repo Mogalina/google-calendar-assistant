@@ -27,6 +27,4 @@ app.use("/api/events", calendarRouter);
 const PORT = process.env.PORT || 5000;
 
 // Start the server and listen for connections
-app.listen(PORT, () =>
-  console.log(`Google Calendar Assistant server running on port ${PORT}`)
-);
+app.listen(PORT, () =>console.log(`Google Calendar Assistant server running on port ${PORT}`));
