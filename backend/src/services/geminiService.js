@@ -351,7 +351,6 @@ export async function continueChat(
 
     let calendarResult = null;
 
-    // ...existing code...
     if (action === "init_shadow_session") {
       // Validate params.start / params.end
       const { start, end } = params;
