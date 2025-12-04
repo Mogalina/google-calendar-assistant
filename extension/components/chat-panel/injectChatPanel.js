@@ -70,6 +70,12 @@
       case "GCA_START_AUTH":
         startAuth();
         break;
+
+      // New shadow calendar was created, refresh Google Calendar page
+      case "GCA_CALENDAR_CREATED":
+        handleCalendarCreated(payload);
+        break;
+      
     }
   });
 
@@ -336,4 +342,20 @@
   function toggleAssistantButton(show) {
     window.postMessage({ type: "TOGGLE_ASSISTANT_BUTTON", show }, "*");
   }
+
+  /**
+   * Handles the event when a new shadow calendar was created
+   * Refreshes the current Google Calendar page so the new calendar appears in the UI
+   *
+   * @param {Object} payload - Optional data sent from panel.js 
+   */
+  function handleCalendarCreated(payload) {
+    // Debug log so we can see the payload in DevTools
+    console.log("InjectChatPanel: shadow calendar created", payload);
+  
+    // Reload the host page so Google Calendar fetches the updated calendar list
+    window.location.reload();
+  }
+  
+
 })();
