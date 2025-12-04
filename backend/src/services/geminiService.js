@@ -79,12 +79,9 @@ async function handleList(accessToken, params, geminiResponse) {
   });
 
   if (calendarResult?.length > 0) {
-    const eventList = calendarResult
-      .map((event, i) => {
+    const eventList = calendarResult.map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(
-          start
-        ).toLocaleString()} (ID: ${event.id})`;
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
       })
       .join("\n");
     geminiResponse.response += `\n\n${eventList}`;
@@ -108,12 +105,9 @@ async function handleSearch(accessToken, params, geminiResponse) {
   });
 
   if (calendarResult?.length > 0) {
-    const eventList = calendarResult
-      .map((event, i) => {
+    const eventList = calendarResult.map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(
-          start
-        ).toLocaleString()} (ID: ${event.id})`;
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
       })
       .join("\n");
     geminiResponse.response += `\n\nFound ${calendarResult.length} events:\n${eventList}`;
@@ -147,11 +141,7 @@ async function handleUpdate(accessToken,params,userTimeZone,calendarId = "primar
   };
 
   // Attach timezone to start and end if being updated and missing timezone
-  if (
-    params.start &&
-    updateData.start?.dateTime &&
-    !updateData.start.timeZone
-  ) {
+  if (params.start && updateData.start?.dateTime && !updateData.start.timeZone) {
     updateData.start.timeZone = userTimeZone;
   }
   if (params.end && updateData.end?.dateTime && !updateData.end.timeZone) {
@@ -190,12 +180,9 @@ async function handleGatherContext(accessToken, params) {
         });
 
         if (events.length > 0) {
-          const eventList = events
-            .map((event, i) => {
+          const eventList = events.map((event, i) => {
               const start = event.start?.dateTime || event.start?.date;
-              return `  - ${event.summary} at ${new Date(
-                start
-              ).toLocaleString()} (ID: ${event.id})`;
+              return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
             })
             .join("\n");
           contextResults.push(
@@ -212,12 +199,9 @@ async function handleGatherContext(accessToken, params) {
         });
 
         if (events.length > 0) {
-          const eventList = events
-            .map((event, i) => {
+          const eventList = events.map((event, i) => {
               const start = event.start?.dateTime || event.start?.date;
-              return `  - ${event.summary} at ${new Date(
-                start
-              ).toLocaleString()} (ID: ${event.id})`;
+              return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
             })
             .join("\n");
           contextResults.push(
