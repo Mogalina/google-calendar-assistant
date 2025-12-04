@@ -8,14 +8,14 @@ import {
   updateEvent,
   deleteEvent,
   searchEvents,
-  getEvent
+  getEvent,
 } from "./calendarService.js";
 
 dotenv.config();
 
 // Initializes the Gemini client
 const client = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 // Hold the model configuration loaded from file
@@ -25,7 +25,6 @@ let geminiConfig;
 try {
   const configFile = fs.readFileSync("src/config/gemini.yaml", "utf8");
   geminiConfig = yaml.load(configFile);
-
 } catch (e) {
   console.error("Failed to load or parse `gemini.yaml` file:", e);
 
@@ -37,15 +36,15 @@ try {
       Your sole purpose is to analyze the user's existing calendar events and their requests 
       to suggest the most efficient, conflict-free, and productive schedule changes.`,
       temperature: 0.7,
-      maxOutputTokens: 800
-    }
+      maxOutputTokens: 800,
+    },
   };
 }
 
 /**
  * Creates a new calendar event using the provided parameters.
  */
-async function handleCreate(accessToken, params, userTimeZone) {
+async function handleCreate(accessToken,params,userTimeZone,calendarId = "primary") {
   // Fallback for missing summary
   if (!params.summary || params.summary.trim() === "") {
     params.summary = "Untitled Event";
@@ -59,18 +58,14 @@ async function handleCreate(accessToken, params, userTimeZone) {
     params.end.timeZone = userTimeZone;
   }
 
-  return await createEvent(
-    accessToken,
-    "primary",
-    {
-      summary: params.summary,
-      start: params.start,
-      end: params.end,
-      description: params.description,
-      location: params.location,
-      attendees: params.attendees,
-    }
-  );
+  return await createEvent(accessToken, calendarId, {
+    summary: params.summary,
+    start: params.start,
+    end: params.end,
+    description: params.description,
+    location: params.location,
+    attendees: params.attendees,
+  });
 }
 
 /**
@@ -80,14 +75,16 @@ async function handleList(accessToken, params, geminiResponse) {
   const calendarResult = await listEvents(accessToken, {
     maxResults: params.maxResults || 10,
     start: params.start,
-    end: params.end
+    end: params.end,
   });
 
   if (calendarResult?.length > 0) {
     const eventList = calendarResult
       .map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+        return `${i + 1}. ${event.summary} - ${new Date(
+          start
+        ).toLocaleString()} (ID: ${event.id})`;
       })
       .join("\n");
     geminiResponse.response += `\n\n${eventList}`;
@@ -106,19 +103,17 @@ async function handleSearch(accessToken, params, geminiResponse) {
     throw new Error("Search query is required");
   }
 
-  const calendarResult = await searchEvents(
-    accessToken,
-    params.query,
-    {
-      maxResults: params.maxResults || 10
-    }
-  );
+  const calendarResult = await searchEvents(accessToken, params.query, {
+    maxResults: params.maxResults || 10,
+  });
 
   if (calendarResult?.length > 0) {
     const eventList = calendarResult
       .map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+        return `${i + 1}. ${event.summary} - ${new Date(
+          start
+        ).toLocaleString()} (ID: ${event.id})`;
       })
       .join("\n");
     geminiResponse.response += `\n\nFound ${calendarResult.length} events:\n${eventList}`;
@@ -133,13 +128,13 @@ async function handleSearch(accessToken, params, geminiResponse) {
  * Updates an existing calendar event.
  * Fetches the current event first and merges with updates to preserve existing data.
  */
-async function handleUpdate(accessToken, params, userTimeZone) {
+async function handleUpdate(accessToken,params,userTimeZone,calendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for updates");
   }
 
   // Fetch the current event to preserve existing data
-  const currentEvent = await getEvent(accessToken, params.eventId);
+  const currentEvent = await getEvent(accessToken, params.eventId, calendarId);
 
   // Merge updates with existing event data
   const updateData = {
@@ -152,34 +147,29 @@ async function handleUpdate(accessToken, params, userTimeZone) {
   };
 
   // Attach timezone to start and end if being updated and missing timezone
-  if (params.start && updateData.start?.dateTime && !updateData.start.timeZone) {
+  if (
+    params.start &&
+    updateData.start?.dateTime &&
+    !updateData.start.timeZone
+  ) {
     updateData.start.timeZone = userTimeZone;
   }
   if (params.end && updateData.end?.dateTime && !updateData.end.timeZone) {
     updateData.end.timeZone = userTimeZone;
   }
 
-  return await updateEvent(
-    accessToken,
-    params.eventId,
-    "primary",
-    updateData
-  );
+  return await updateEvent(accessToken, params.eventId, calendarId, updateData);
 }
 
 /**
  * Deletes an existing calendar event.
  */
-async function handleDelete(accessToken, params) {
+async function handleDelete(accessToken, params, calendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for deletion");
   }
 
-  return await deleteEvent(
-    accessToken,
-    params.eventId,
-    "primary"
-  );
+  return await deleteEvent(accessToken, params.eventId, calendarId);
 }
 
 /**
@@ -196,35 +186,49 @@ async function handleGatherContext(accessToken, params) {
         const events = await listEvents(accessToken, {
           maxResults: op.maxResults || 10,
           start: op.start,
-          end: op.end
+          end: op.end,
         });
 
         if (events.length > 0) {
-          const eventList = events.map((event, i) => {
-            const start = event.start?.dateTime || event.start?.date;
-            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
-          }).join("\n");
-          contextResults.push(`List results (${events.length} events):\n${eventList}`);
+          const eventList = events
+            .map((event, i) => {
+              const start = event.start?.dateTime || event.start?.date;
+              return `  - ${event.summary} at ${new Date(
+                start
+              ).toLocaleString()} (ID: ${event.id})`;
+            })
+            .join("\n");
+          contextResults.push(
+            `List results (${events.length} events):\n${eventList}`
+          );
         } else {
-          contextResults.push("List results: No events found in the specified time range.");
+          contextResults.push(
+            "List results: No events found in the specified time range."
+          );
         }
-
       } else if (op.type === "search") {
         const events = await searchEvents(accessToken, op.query, {
-          maxResults: op.maxResults || 10
+          maxResults: op.maxResults || 10,
         });
 
         if (events.length > 0) {
-          const eventList = events.map((event, i) => {
-            const start = event.start?.dateTime || event.start?.date;
-            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
-          }).join("\n");
-          contextResults.push(`Search results for "${op.query}" (${events.length} events):\n${eventList}`);
+          const eventList = events
+            .map((event, i) => {
+              const start = event.start?.dateTime || event.start?.date;
+              return `  - ${event.summary} at ${new Date(
+                start
+              ).toLocaleString()} (ID: ${event.id})`;
+            })
+            .join("\n");
+          contextResults.push(
+            `Search results for "${op.query}" (${events.length} events):\n${eventList}`
+          );
         } else {
-          contextResults.push(`Search results for "${op.query}": No matching events found.`);
+          contextResults.push(
+            `Search results for "${op.query}": No matching events found.`
+          );
         }
       }
-
     } catch (error) {
       contextResults.push(`Error in ${op.type} operation: ${error.message}`);
     }
@@ -236,14 +240,19 @@ async function handleGatherContext(accessToken, params) {
 /**
  * Sends a message to Gemini, continuing a conversation based on the provided history.
  * Now supports two-phase execution for context gathering.
- * 
+ *
  * @param {string} input - The new user prompt.
  * @param {Array<object>} history - The full conversation history sent by the client.
  * @param {string|null} accessToken - Optional OAuth2 access token for calendar operations.
  * @param {string} userTimeZone - The user's current timezone.
- * @returns {Promise<{output: string, action?: string, calendarResult?: any, needsFollowup?: boolean}>} 
+ * @returns {Promise<{output: string, action?: string, calendarResult?: any, needsFollowup?: boolean}>}
  */
-export async function continueChat(input, history = [], accessToken = null, userTimeZone = "UTC") {
+export async function continueChat(
+  input,
+  history = [],
+  accessToken = null,
+  userTimeZone = "UTC"
+) {
   // Require the `input` field to be present
   if (!input || typeof input !== "string") {
     throw new Error("Invalid user input for Gemini");
@@ -268,12 +277,12 @@ export async function continueChat(input, history = [], accessToken = null, user
     // Create a new, temporary chat session for this specific request
     const chat = client.chats.create({
       ...geminiConfig,
-      history: history 
+      history: history,
     });
 
     // Send the new user message to the chat session
     const result = await chat.sendMessage({ message: contextualInput });
-    
+
     // Extract text from Gemini response
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text || text === "") {
@@ -285,12 +294,16 @@ export async function continueChat(input, history = [], accessToken = null, user
     let geminiResponse;
     try {
       // Remove markdown code blocks if present
-      const cleanedText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      const cleanedText = text
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "");
       geminiResponse = JSON.parse(cleanedText);
-
     } catch (parseError) {
       // If parsing fails, treat as regular conversation
-      console.warn("Failed to parse Gemini response as JSON, treating as text:", text);
+      console.warn(
+        "Failed to parse Gemini response as JSON, treating as text:",
+        text
+      );
       return { output: text, action: "none" };
     }
 
@@ -299,11 +312,11 @@ export async function continueChat(input, history = [], accessToken = null, user
     const params = geminiResponse.parameters || {};
 
     let calendarResult = null;
-    
+
     // Handle context gathering specially - it needs a follow-up
     if (action === "gather_context") {
       const contextData = await handleGatherContext(accessToken, params);
-      
+
       // Now make a second call to Gemini with the gathered context
       const followUpInput = `
         Based on the user's request: "${input}"
@@ -315,35 +328,60 @@ export async function continueChat(input, history = [], accessToken = null, user
       `;
 
       const followUpResult = await chat.sendMessage({ message: followUpInput });
-      const followUpText = followUpResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      
+      const followUpText =
+        followUpResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
       if (!followUpText) {
         throw new Error("Gemini returned empty response in follow-up");
       }
 
       // Parse the follow-up response
-      const cleanedFollowUp = followUpText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+      const cleanedFollowUp = followUpText
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "");
       const followUpResponse = JSON.parse(cleanedFollowUp);
-      
+
       const finalAction = followUpResponse.action || "none";
       const finalParams = followUpResponse.parameters || {};
 
       // Execute the final action
       switch (finalAction) {
         case "create":
-          calendarResult = await handleCreate(accessToken, finalParams, userTimeZone);
+          calendarResult = await handleCreate(
+            accessToken,
+            finalParams,
+            userTimeZone,
+            finalParams.calendarId
+          );
           break;
         case "update":
-          calendarResult = await handleUpdate(accessToken, finalParams, userTimeZone);
+          calendarResult = await handleUpdate(
+            accessToken,
+            finalParams,
+            userTimeZone,
+            finalParams.calendarId
+          );
           break;
         case "delete":
-          calendarResult = await handleDelete(accessToken, finalParams);
+          calendarResult = await handleDelete(
+            accessToken,
+            finalParams,
+            finalParams.calendarId
+          );
           break;
         case "list":
-          calendarResult = await handleList(accessToken, finalParams, followUpResponse);
+          calendarResult = await handleList(
+            accessToken,
+            finalParams,
+            followUpResponse
+          );
           break;
         case "search":
-          calendarResult = await handleSearch(accessToken, finalParams, followUpResponse);
+          calendarResult = await handleSearch(
+            accessToken,
+            finalParams,
+            followUpResponse
+          );
           break;
         case "none":
         default:
@@ -356,23 +394,41 @@ export async function continueChat(input, history = [], accessToken = null, user
         calendarResult,
       };
     }
-    
+
     // Execute single-phase actions as before
     switch (action) {
       case "create":
-        calendarResult = await handleCreate(accessToken, params, userTimeZone);
+        calendarResult = await handleCreate(
+          accessToken,
+          params,
+          userTimeZone,
+          params.calendarId
+        );
         break;
       case "list":
         calendarResult = await handleList(accessToken, params, geminiResponse);
         break;
       case "search":
-        calendarResult = await handleSearch(accessToken, params, geminiResponse);
+        calendarResult = await handleSearch(
+          accessToken,
+          params,
+          geminiResponse
+        );
         break;
       case "update":
-        calendarResult = await handleUpdate(accessToken, params, userTimeZone);
+        calendarResult = await handleUpdate(
+          accessToken,
+          params,
+          userTimeZone,
+          params.calendarId
+        );
         break;
       case "delete":
-        calendarResult = await handleDelete(accessToken, params);
+        calendarResult = await handleDelete(
+          accessToken,
+          params,
+          params.calendarId
+        );
         break;
       case "none":
       default:
@@ -384,7 +440,6 @@ export async function continueChat(input, history = [], accessToken = null, user
       action,
       calendarResult,
     };
-
   } catch (error) {
     console.error("Gemini API error:", error);
     throw new Error("Failed to call Gemini API");
