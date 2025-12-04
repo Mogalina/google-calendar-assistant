@@ -11,6 +11,9 @@
   // The base endpoint for the backend server handling requests
   const API_URL = "http://localhost:8080";
 
+  // Tracks the current shadow calendar used during a smart reschedule session
+  let currentShadowCalendarId = null;
+
   // Check if initialization has already happened to prevent attaching multiple listeners
   if (window.__panelInitialized) return;
   window.__panelInitialized = true;
@@ -393,6 +396,21 @@
 
           const gcaAccessToken = gcaTokenResp.access_token;
 
+          // Build the request payload for the backend
+          // Besides the user input and conversation history, we also send the
+          // user's timezone so Gemini can reason about dates correctly
+          const requestBody = {
+            input: msg,
+            history: history,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          };
+
+          // If a shadow calendar has been initialized earlier in this session,
+          // include its ID so the backend can keep using the same calendar
+          if (currentShadowCalendarId) {
+            requestBody.shadowCalendarId = currentShadowCalendarId;
+          }
+
           // Send user response to the assistant backend
           const response = await fetch(API_URL + "/api/gemini", {
             method: "POST",
@@ -413,6 +431,21 @@
 
           // Process API Response
           const data = await response.json();
+
+          console.log("PANEL: /api/gemini response =", data);
+
+          // If the backend has just initialized a new shadow session, remember
+          // the shadow calendar ID so we can send it with future requests
+          if (data.action === "init_shadow_session") {
+            const shadowId =
+              data.shadowCalendarId || data.calendarResult?.shadowCalendarId;
+
+            if (shadowId) {
+              currentShadowCalendarId = shadowId;
+              console.log("Saved shadow calendar id:", currentShadowCalendarId);
+            }
+          }
+
           const aiMessage = data.output || data.text || "(No response)";
 
           // Replace pulsing bubble with final assistant text response
