@@ -255,8 +255,6 @@
     const panel = createChatPanel();
     if (panel.style.display === "none") {
       showChatPanel();
-    } else {
-      hideChatPanel();
     }
   }
 

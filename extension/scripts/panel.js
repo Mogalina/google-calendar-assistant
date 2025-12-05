@@ -24,6 +24,9 @@
   function initializePanel() {
     const GCA_CONSENT_KEY = "gcaCalendarConsent";
 
+    let smartReschedulingMode = false;
+    let shadowCalendarId = null;
+
     /**
      * Retrieves the user's stored privacy consent decision.
      *
@@ -79,6 +82,100 @@
       window.postMessage({ type: "GCA_START_AUTH" }, "*");
     }
 
+    // Detect when LLM response is a rescheduling suggestion
+    function isReschedulingSuggestion(messageText) {
+      return (
+        messageText.includes("[RESCHEDULE]") ||
+        messageText.includes("reschedule") ||
+        messageText.toLowerCase().includes("proposed schedule") ||
+        messageText.toLowerCase().includes("suggested arrangement")
+      );
+    }
+
+    function disableInlineRescheduleButtons() {
+      const buttons = root.querySelectorAll(".reschedule-link-button");
+      buttons.forEach(btn => {
+        btn.disabled = true;
+        btn.classList.add("disabled");
+      });
+    }
+
+    /**
+     * Attaches "Apply all | Ignore suggestion" inline next to the time
+     * for the given AI message bubble.
+     */
+    function attachInlineRescheduleButtonsForBubble(bubbleEl) {
+      if (!bubbleEl) return;
+
+      // .message -> .message-content -> .message-time
+      const messageEl = bubbleEl.closest(".message");
+      if (!messageEl) return;
+
+      const timeEl = messageEl.querySelector(".message-time");
+      if (!timeEl) return;
+
+      // Remove previous inline actions if any
+      const old = messageEl.querySelector(".reschedule-actions-inline");
+      if (old) old.remove();
+
+      // Container <span> to hold the actions
+      const actionsSpan = document.createElement("span");
+      actionsSpan.className = "reschedule-actions-inline";
+
+      // Apply button
+      const applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.textContent = "Apply all";
+      applyBtn.className = "reschedule-link-button";
+      applyBtn.addEventListener("click", commitShadowCalendar);
+
+      const prefixSpacer = document.createTextNode("  · ");
+      const separator = document.createTextNode(" | ");
+
+      actionsSpan.appendChild(applyBtn);
+
+      timeEl.appendChild(prefixSpacer);
+      timeEl.appendChild(actionsSpan);
+    }
+
+    async function commitShadowCalendar() {
+      if (!shadowCalendarId) return;
+
+      suggestionTag.style.display = "none";
+      disableInlineRescheduleButtons();
+
+      try {
+        const gcaTokenResp = await requestGcaAccessToken();
+        if (gcaTokenResp.status !== "success") {
+          throw new Error("No access token");
+        }
+
+        const token = gcaTokenResp.access_token;
+
+        const result = await fetch(API_URL + "/api/events/shadow/commit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ shadowCalendarId }),
+        });
+
+        if (!result.ok) {
+          throw new Error("Commit failed: " + result.status);
+        }
+
+        await appendMessage("ai", "Your calendar has been updated successfully.");
+
+        shadowCalendarId = null;
+        smartReschedulingMode = false;
+      } catch (err) {
+        console.error(err);
+        await appendMessage("ai", "Failed to apply changes. Please try again.");
+      }
+    }
+
+
     // Attempt to locate the root shadow
     let root = document.currentScript?.getRootNode();
     if (!(root instanceof ShadowRoot)) {
@@ -116,7 +213,7 @@
     /**
      * Initializes and manages the privacy consent modal for the extension.
      *
-     * Displays the consent dialog when no previous decision exists in localStorage, and attaches 
+     * Displays the consent dialog when no previous decision exists in localStorage, and attaches
      * event listeners to handle the user's choice.
      */
     async function initPrivacyConsent() {
@@ -148,7 +245,6 @@
     if (initialTimeEl) {
       initialTimeEl.textContent = new Date().toLocaleTimeString();
     }
-  
 
     /**
      * Sends a custom message from this script to the top-level window.
@@ -309,7 +405,6 @@
 
     // Handle chat form submission when user sends message
     if (chatForm && chatInput && chatMessages) {
-
       // Allow to send message when pressing Enter (without Shift)
       chatInput.addEventListener("keydown", (e) => {
         if (e.key == "Enter" && !e.shiftKey) {
@@ -319,7 +414,7 @@
           );
         }
       });
-      
+
       chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
@@ -424,6 +519,17 @@
             lastAiBubble.textContent = aiMessage;
             lastAiBubble.style.color = "inherit";
 
+            // Check if the AI produced a rescheduling suggestion
+            if (smartReschedulingMode && isReschedulingSuggestion(aiMessage)) {
+              // Your backend must return a shadow calendar ID
+              shadowCalendarId = data.shadowCalendarId ?? "123";
+
+              if (shadowCalendarId) {
+                console.log("Shadow calendar created:", shadowCalendarId);
+                attachInlineRescheduleButtonsForBubble(lastAiBubble);
+              }
+            }
+
             const existing = (await loadMessages()) || [];
             existing.push({
               sender: "ai",
@@ -509,11 +615,17 @@
       smartSuggestionBtn.addEventListener("click", () => {
         suggestionTag.style.display = "flex";
         dropdownMenu.style.display = "none";
+
+        smartReschedulingMode = true;
+        console.log("Smart rescheduling mode ON");
       });
 
       // Remove suggestion instrument tag
       removeSuggestion.addEventListener("click", () => {
         suggestionTag.style.display = "none";
+        smartReschedulingMode = false;
+        disableInlineRescheduleButtons()
+        // + call discard function
       });
     }
 
@@ -553,9 +665,12 @@
           type,
           (e) => {
             const active = root.activeElement || document.activeElement;
-            
-            if (chatInput &&(active === chatInput || chatInput.contains(e.target))) {
-              if(e.key=="Enter") return;
+
+            if (
+              chatInput &&
+              (active === chatInput || chatInput.contains(e.target))
+            ) {
+              if (e.key == "Enter") return;
               e.stopPropagation();
               e.stopImmediatePropagation();
             }
@@ -565,7 +680,9 @@
       });
     } else {
       // If no shadow root found, skip containment setup
-      console.info("Skipping event containment because no shadow root was found.");
+      console.info(
+        "Skipping event containment because no shadow root was found."
+      );
     }
   }
 })();
