@@ -129,12 +129,19 @@
       applyBtn.className = "reschedule-link-button";
       applyBtn.addEventListener("click", commitShadowCalendar);
 
-      const prefixSpacer = document.createTextNode("  · ");
+      // Ignore button
+      const ignoreBtn = document.createElement("button");
+      ignoreBtn.type = "button";
+      ignoreBtn.textContent = "Ignore all";
+      ignoreBtn.className = "reschedule-link-button";
+      ignoreBtn.addEventListener("click", exitReschedulingMode);
+
       const separator = document.createTextNode(" | ");
 
       actionsSpan.appendChild(applyBtn);
+      actionsSpan.appendChild(separator);
+      actionsSpan.appendChild(ignoreBtn);
 
-      timeEl.appendChild(prefixSpacer);
       timeEl.appendChild(actionsSpan);
     }
 
@@ -175,6 +182,46 @@
       }
     }
 
+    async function exitReschedulingMode() {
+      suggestionTag.style.display = "none";
+      disableInlineRescheduleButtons();
+      try {
+        if (shadowCalendarId) {
+          const gcaTokenResp = await requestGcaAccessToken();
+          if (gcaTokenResp.status === "success") {
+            const token = gcaTokenResp.access_token;
+
+            await fetch(API_URL + "/api/events/shadow/discard", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ shadowCalendarId }),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to discard shadow calendar", err);
+      } finally {
+        shadowCalendarId = null;
+        smartReschedulingMode = false;
+      }
+    }
+
+    window.addEventListener("beforeunload", () => {
+      if (!shadowCalendarId) return;
+
+      try {
+        navigator.sendBeacon(
+          API_URL + "/api/events/shadow/discard",
+          JSON.stringify({ shadowCalendarId })
+        );
+      } catch (e) {
+        // ignore
+        console.log("Error on tab close: ", e)
+      }
+    });
 
     // Attempt to locate the root shadow
     let root = document.currentScript?.getRootNode();
@@ -625,7 +672,7 @@
         suggestionTag.style.display = "none";
         smartReschedulingMode = false;
         disableInlineRescheduleButtons()
-        // + call discard function
+        exitReschedulingMode()
       });
     }
 
