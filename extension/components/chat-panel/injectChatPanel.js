@@ -13,18 +13,18 @@
 
   // Tracks the current height state of the panel
   let isFullHeight = true;
-
+  
   // Reference to the main container div of the panel
   let panelHost = null;
 
   /**
    * Main Event Listener for Window Messages.
-   * It listens for specific message types dispatched from other parts of the content script or the
+   * It listens for specific message types dispatched from other parts of the content script or the 
    * injected panel itself, and routes them to the appropriate handler functions.
    */
   window.addEventListener("message", (event) => {
     const { type, payload } = event.data || {};
-
+    
     // Ignore messages without a type identifier
     if (!type) {
       return;
@@ -33,39 +33,39 @@
     switch (type) {
       // Triggered when the floating action button is clicked
       case "ASSISTANT_BUTTON_CLICK":
-        toggleChatPanel();
+        showChatPanel();
         break;
-
+      
       // Requests closing the panel
       case "CLOSE_CHAT_PANEL":
         closeChatPanel();
         break;
-
+      
       // Requests toggling the panel height
       case "RESIZE_CHAT_PANEL":
         resizeChatPanel();
         break;
-
+      
       // Request to save chat history
       case "SAVE_MESSAGES":
         saveMessages(payload);
         break;
-
+      
       // Request to retrieve chat history
       case "LOAD_MESSAGES":
         loadMessages();
         break;
-
+      
       // Request to wipe chat history
       case "CLEAR_MESSAGES":
         clearMessages();
         break;
-
+      
       // Request an OAuth token
       case "GCA_REQUEST_ACCESS_TOKEN":
         getAccessToken();
         break;
-
+      
       // Trigger the Google Sign-In flow
       case "GCA_START_AUTH":
         startAuth();
@@ -75,7 +75,7 @@
 
   /**
    * Sends a message to the background script to save the current conversation history.
-   *
+   * 
    * @param {Array<Object>} messages - The array of message objects to persist.
    */
   async function saveMessages(messages) {
@@ -84,7 +84,7 @@
 
   /**
    * Requests stored messages from the background script.
-   *
+   * 
    * @returns {Promise<Array>} A promise that resolves with the messages array.
    */
   async function loadMessages() {
@@ -134,15 +134,9 @@
    * back to the window so panel.js can use it.
    */
   async function getAccessToken() {
-    chrome.runtime.sendMessage(
-      { action: "GET_GCA_ACCESS_TOKEN" },
-      (response) => {
-        window.postMessage(
-          { type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response },
-          "*"
-        );
-      }
-    );
+    chrome.runtime.sendMessage({ action: "GET_GCA_ACCESS_TOKEN" }, (response) => {
+      window.postMessage({ type: "GCA_ACCESS_TOKEN_RESPONSE", payload: response }, "*");
+    });
   }
 
   /**
@@ -239,37 +233,18 @@
 
     // Assign a unique identifier for this panel instance
     panelHost.setAttribute("data-panel-id", Date.now().toString());
-
-    shadow.aiAvatarUrl = chrome.runtime.getURL(
-      "assets/images/gemini-chat-bot-logo.png"
-    );
+    
+    shadow.aiAvatarUrl = chrome.runtime.getURL("assets/images/gemini-chat-bot-logo.png");
 
     // Inject the main panel logic script
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("components/chat-panel/panel.js");
-    script.setAttribute(
-      "data-panel-id",
-      panelHost.getAttribute("data-panel-id")
-    );
+    script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
 
     script.onload = () => console.log("Panel script loaded successfully");
-    script.onerror = (err) =>
-      console.error("Failed to load panel script:", err);
+    script.onerror = (err) => console.error("Failed to load panel script:", err);
 
     shadow.appendChild(script);
-  }
-
-  /**
-   * Toggles the chat panel’s visibility.
-   * Creates the panel on first use, then alternates showing and hiding.
-   */
-  async function toggleChatPanel() {
-    const panel = createChatPanel();
-    if (panel.style.display === "none") {
-      showChatPanel();
-    } else {
-      hideChatPanel();
-    }
   }
 
   /**
@@ -277,6 +252,8 @@
    * Ensures the display properties and transforms are set to visible states.
    */
   function showChatPanel() {
+    createChatPanel();
+
     if (!panelHost) {
       return;
     }
@@ -353,8 +330,8 @@
   /**
    * Sends a message to toggle the assistant button visibility.
    * Used to coordinate between the chat panel state and the floating button state.
-   *
-   * * @param {boolean} show - True to show the button, false to hide the button.
+   * 
+   * @param {boolean} show - True to show the button, false to hide the button.
    */
   function toggleAssistantButton(show) {
     window.postMessage({ type: "TOGGLE_ASSISTANT_BUTTON", show }, "*");
