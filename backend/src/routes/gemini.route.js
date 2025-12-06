@@ -5,20 +5,20 @@ import { sendErrorResponse, extractAccessToken } from "../utils/utils.js";
 const router = express.Router();
 
 /**
- * Handles incoming chat messages from the client. This endpoint is stateless, meaning the client 
+ * Handles incoming chat messages from the client. This endpoint is stateless, meaning the client
  * sends the entire conversation history with each request.
  */
 router.post("/", async (req, res) => {
   try {
-    // Destructure the user's new message `input` and the conversation history `history` from the 
+    // Destructure the user's new message `input` and the conversation history `history` from the
     // request body, including caller's timezone for event scheduling
-    const { input, history, timezone } = req.body;
+    const { input, history, timezone, shadowCalendarId } = req.body;
 
     // Require the `input` field to be present
     if (!input || input === "") {
       return sendErrorResponse(res, 400, "Missing or empty input field");
     }
-    
+
     // Require access token for calendar operations
     const accessToken = extractAccessToken(req);
     if (!accessToken) {
@@ -26,18 +26,29 @@ router.post("/", async (req, res) => {
     }
 
     // Prefer client-provided timezone
-    const userTimeZone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const userTimeZone =
+      timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+    // Decide target calendar: shadow if provided, otherwise primary
+    const targetCalendarId = shadowCalendarId || "primary";
 
     // Pass the input and history to the service to be processed by Gemini
     // `history` can be undefined or an empty array for the first message
-    const response = await continueChat(input, history || [], accessToken, userTimeZone);
+    const response = await continueChat(
+      input,
+      history || [],
+      accessToken,
+      userTimeZone,
+      targetCalendarId
+    );
 
     // Send the structured response from the Gemini service back to the client
     res.json(response);
-    
   } catch (error) {
     console.error("Error calling Gemini:", error);
-    return sendErrorResponse(res, 500, "Failed to call Gemini API", { raw: error.message });
+    return sendErrorResponse(res, 500, "Failed to call Gemini API", {
+      raw: error.message,
+    });
   }
 });
 
