@@ -238,7 +238,7 @@
 
     // Inject the main panel logic script
     const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("scripts/panel.js");
+    script.src = chrome.runtime.getURL("components/chat-panel/panel.js");
     script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
 
     script.onload = () => console.log("Panel script loaded successfully");
@@ -331,7 +331,7 @@
    * Sends a message to toggle the assistant button visibility.
    * Used to coordinate between the chat panel state and the floating button state.
    * 
-   * * @param {boolean} show - True to show the button, false to hide the button.
+   * @param {boolean} show - True to show the button, false to hide the button.
    */
   function toggleAssistantButton(show) {
     window.postMessage({ type: "TOGGLE_ASSISTANT_BUTTON", show }, "*");
