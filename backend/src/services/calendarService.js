@@ -393,14 +393,13 @@ export async function cloneEvents(
  * - Parses and validates the requested interval.
  * - Guards against intervals longer than 7 days.
  * - Creates a new shadow calendar.
- * - Clones events from the primary calendar into the shadow calendar,
- *   keeping lineage via extendedProperties.private.originalEventId.
+ * - Clones events from the primary calendar into the shadow calendar, keeping lineage via 
+ *   `extendedProperties.private.originalEventId`.
  * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} startStr - ISO date-time string for interval start.
  * @param {string} endStr - ISO date-time string for interval end.
- * @returns {Promise<{ shadowCalendarId: string, events: Array }>}
- *          The shadow calendar id and the cloned events.
+ * @returns {Promise<{ shadowCalendarId: string, events: Array }>} The shadow calendar id and the cloned events.
  * 
  * @throws {Error} If the interval is invalid or longer than 7 days.
  */
