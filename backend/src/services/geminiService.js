@@ -42,6 +42,35 @@ try {
   };
 }
 
+// Ensure the tools array exists in the configuration
+if (!geminiConfig.tools) {
+  geminiConfig.tools = [];
+}
+
+// Add the `init_shadow_session` tool
+geminiConfig.tools.push({
+  functionDeclarations: [
+    {
+      name: "init_shadow_session",
+      description: "Initialize a shadow session for a specific time range.",
+      parameters: {
+        type: "OBJECT",
+        properties: {
+          start: {
+            type: "STRING",
+            description: "Start time of the shadow session (ISO datetime)."
+          },
+          end: {
+            type: "STRING",
+            description: "End time of the shadow session (ISO datetime)."
+          }
+        },
+        required: ["start", "end"]
+      }
+    }
+  ]
+});
+
 /**
  * Creates a new calendar event using the provided parameters.
  */
@@ -235,7 +264,6 @@ async function handleGatherContext(accessToken, params) {
 
 /**
  * Sends a message to Gemini, continuing a conversation based on the provided history.
- * Now supports two-phase execution for context gathering.
  * 
  * @param {string} input - The new user prompt.
  * @param {Array<object>} history - The full conversation history sent by the client.
@@ -357,7 +385,7 @@ export async function continueChat(input, history = [], accessToken = null, user
       };
     }
     
-    // Execute single-phase actions as before
+    // Execute single-phase actions
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone);
