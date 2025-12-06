@@ -8,7 +8,8 @@ import {
   updateEvent,
   deleteEvent,
   searchEvents,
-  getEvent
+  getEvent,
+  initializeShadowSession
 } from "./calendarService.js";
 
 dotenv.config();
@@ -385,7 +386,59 @@ export async function continueChat(input, history = [], accessToken = null, user
       };
     }
     
-    // Execute single-phase actions
+    // Handle shadow session initialization
+    if (action === "init_shadow_session") {
+      // Execute the shadow session creation logic
+      const { shadowCalendarId, events } = await initializeShadowSession(
+        accessToken, 
+        params.start, 
+        params.end
+      );
+
+      // Create a summary of events cloned into the shadow session
+      const eventList = events.map((event, i) => {
+        const start = event.start?.dateTime || event.start?.date;
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()}`;
+      }).join("\n");
+
+      const followUpInput = `
+        System Notification: Shadow session successfully initialized.
+        Shadow Calendar ID: ${shadowCalendarId}
+        
+        Events cloned into this session:
+        ${eventList}
+        
+        Please generate a response to the user confirming the session creation and briefly listing what was imported.
+      `;
+
+      // Feed context back to Gemini for the final response text
+      const followUpResult = await chat.sendMessage({ message: followUpInput });
+      const followUpText = followUpResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+      if (!followUpText) {
+        throw new Error("Gemini returned empty response");
+      }
+
+      let followUpResponse;
+      try {
+        const cleanedFollowUp = followUpText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+        followUpResponse = JSON.parse(cleanedFollowUp);
+      } catch (parseError) {
+        // Fallback if Gemini replies with plain text
+        followUpResponse = { response: followUpText };
+      }
+
+      return {
+        output: followUpResponse.response,
+        action: "init_shadow_session",
+        calendarResult: {
+          shadowCalendarId,
+          events
+        },
+      };
+    }
+
+    // Execute single-phase actions as before
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone);
