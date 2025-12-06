@@ -17,7 +17,6 @@ router.post("/", requireAccessToken, async (req, res) => {
       event
     );
     return res.status(201).json(data);
-
   } catch (err) {
     return handleGoogleApiError(res, err);
   }
@@ -29,7 +28,11 @@ router.post("/", requireAccessToken, async (req, res) => {
 router.put("/:eventId", requireAccessToken, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { calendarId = "primary", event, sendUpdates = "all" } = req.body || {};
+    const {
+      calendarId = "primary",
+      event,
+      sendUpdates = "all",
+    } = req.body || {};
     const data = await calendarService.updateEvent(
       req.accessToken,
       eventId,
@@ -38,7 +41,6 @@ router.put("/:eventId", requireAccessToken, async (req, res) => {
       sendUpdates
     );
     return res.status(200).json(data);
-
   } catch (err) {
     return handleGoogleApiError(res, err);
   }
@@ -51,9 +53,13 @@ router.delete("/:eventId", requireAccessToken, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { calendarId = "primary", sendUpdates = "all" } = req.body || {};
-    await calendarService.deleteEvent(req.accessToken, eventId, calendarId, sendUpdates);
+    await calendarService.deleteEvent(
+      req.accessToken,
+      eventId,
+      calendarId,
+      sendUpdates
+    );
     return res.status(204).end();
-
   } catch (err) {
     return handleGoogleApiError(res, err);
   }
@@ -67,7 +73,6 @@ router.get("/list", requireAccessToken, async (req, res) => {
   try {
     const data = await calendarService.listEvents(req.accessToken, req.query);
     return res.status(200).json(data);
-
   } catch (err) {
     return handleGoogleApiError(res, err);
   }
@@ -86,10 +91,43 @@ router.get("/search", requireAccessToken, async (req, res) => {
       req.query
     );
     return res.status(200).json(data);
-
   } catch (err) {
     return handleGoogleApiError(res, err);
   }
 });
 
 export default router;
+
+/**
+ * Commits changes from the shadow calendar back to the primary calendar.
+ * syncShadowToPrimary: applies updates/creates/deletes to primary.
+ * deleteCalendar: removes the shadow calendar.
+ */
+router.post("/shadow/commit", requireAccessToken, async (req, res) => {
+  try {
+    const { shadowCalendarId } = req.body || {};
+
+    if (!shadowCalendarId) {
+      return res.status(400).json({
+        error: "shadowCalendarId is required in request body.",
+      });
+    }
+
+    // sync shadow → primary
+    const syncResult = await calendarService.syncShadowToPrimary(
+      req.accessToken,
+      shadowCalendarId
+    );
+
+    // delete shadow calendar
+    await calendarService.deleteCalendar(req.accessToken, shadowCalendarId);
+
+    // Acceptance Criteria: return 200 OK
+    return res.status(200).json({
+      success: true,
+      ...syncResult, // { updated, created, deleted }
+    });
+  } catch (err) {
+    return handleGoogleApiError(res, err);
+  }
+});
