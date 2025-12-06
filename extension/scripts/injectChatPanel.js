@@ -33,7 +33,7 @@
     switch (type) {
       // Triggered when the floating action button is clicked
       case "ASSISTANT_BUTTON_CLICK":
-        toggleChatPanel();
+        showChatPanel();
         break;
       
       // Requests closing the panel
@@ -248,23 +248,12 @@
   }
 
   /**
-   * Toggles the chat panel’s visibility.
-   * Creates the panel on first use, then alternates showing and hiding.
-   */
-  async function toggleChatPanel() {
-    const panel = createChatPanel();
-    if (panel.style.display === "none") {
-      showChatPanel();
-    } else {
-      hideChatPanel();
-    }
-  }
-
-  /**
    * Shows the chat panel and resets it to full height.
    * Ensures the display properties and transforms are set to visible states.
    */
   function showChatPanel() {
+    createChatPanel();
+
     if (!panelHost) {
       return;
     }
