@@ -74,8 +74,14 @@ geminiConfig.tools.push({
 
 /**
  * Creates a new calendar event using the provided parameters.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
+ * @param {Object} params - The event parameters.
+ * @param {string} userTimeZone - The user's time zone.
+ * @param {string} [calendarId="primary"] - The ID of the calendar to create the event in.
+ * @returns {Promise<Object>} The created event object from Google Calendar API.
  */
-async function handleCreate(accessToken, params, userTimeZone) {
+async function handleCreate(accessToken, params, userTimeZone, calendarId = "primary") {
   // Fallback for missing summary
   if (!params.summary || params.summary.trim() === "") {
     params.summary = "Untitled Event";
@@ -89,18 +95,14 @@ async function handleCreate(accessToken, params, userTimeZone) {
     params.end.timeZone = userTimeZone;
   }
 
-  return await createEvent(
-    accessToken,
-    "primary",
-    {
-      summary: params.summary,
-      start: params.start,
-      end: params.end,
-      description: params.description,
-      location: params.location,
-      attendees: params.attendees,
-    }
-  );
+  return await createEvent(accessToken, calendarId, {
+    summary: params.summary,
+    start: params.start,
+    end: params.end,
+    description: params.description,
+    location: params.location,
+    attendees: params.attendees,
+  });
 }
 
 /**
@@ -114,12 +116,10 @@ async function handleList(accessToken, params, geminiResponse) {
   });
 
   if (calendarResult?.length > 0) {
-    const eventList = calendarResult
-      .map((event, i) => {
-        const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
-      })
-      .join("\n");
+    const eventList = calendarResult.map((event, i) => {
+      const start = event.start?.dateTime || event.start?.date;
+      return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+    }).join("\n");
     geminiResponse.response += `\n\n${eventList}`;
   } else {
     geminiResponse.response += "\n\nNo upcoming events found.";
@@ -136,21 +136,15 @@ async function handleSearch(accessToken, params, geminiResponse) {
     throw new Error("Search query is required");
   }
 
-  const calendarResult = await searchEvents(
-    accessToken,
-    params.query,
-    {
-      maxResults: params.maxResults || 10
-    }
-  );
+  const calendarResult = await searchEvents(accessToken, params.query, {
+    maxResults: params.maxResults || 10,
+  });
 
   if (calendarResult?.length > 0) {
-    const eventList = calendarResult
-      .map((event, i) => {
-        const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
-      })
-      .join("\n");
+    const eventList = calendarResult.map((event, i) => {
+      const start = event.start?.dateTime || event.start?.date;
+      return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+    }).join("\n");
     geminiResponse.response += `\n\nFound ${calendarResult.length} events:\n${eventList}`;
   } else {
     geminiResponse.response += `\n\nNo events found matching "${params.query}".`;
@@ -162,14 +156,20 @@ async function handleSearch(accessToken, params, geminiResponse) {
 /**
  * Updates an existing calendar event.
  * Fetches the current event first and merges with updates to preserve existing data.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
+ * @param {object} params - The event update parameters.
+ * @param {string} userTimeZone - The user's time zone.
+ * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
+ * @returns {Promise<object>} The updated event object.
  */
-async function handleUpdate(accessToken, params, userTimeZone) {
+async function handleUpdate(accessToken, params, userTimeZone, calendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for updates");
   }
 
   // Fetch the current event to preserve existing data
-  const currentEvent = await getEvent(accessToken, params.eventId);
+  const currentEvent = await getEvent(accessToken, params.eventId, calendarId);
 
   // Merge updates with existing event data
   const updateData = {
@@ -189,27 +189,23 @@ async function handleUpdate(accessToken, params, userTimeZone) {
     updateData.end.timeZone = userTimeZone;
   }
 
-  return await updateEvent(
-    accessToken,
-    params.eventId,
-    "primary",
-    updateData
-  );
+  return await updateEvent(accessToken, params.eventId, calendarId, updateData);
 }
 
 /**
  * Deletes an existing calendar event.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for authentication.
+ * @param {object} params - The parameters for deletion, must include `eventId`.
+ * @param {string} [calendarId="primary"] - The calendar identifier (default is "primary").
+ * @returns {Promise<any>} The result of the delete operation.
  */
-async function handleDelete(accessToken, params) {
+async function handleDelete(accessToken, params, calendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for deletion");
   }
 
-  return await deleteEvent(
-    accessToken,
-    params.eventId,
-    "primary"
-  );
+  return await deleteEvent(accessToken, params.eventId, calendarId);
 }
 
 /**
@@ -360,19 +356,41 @@ export async function continueChat(input, history = [], accessToken = null, user
       // Execute the final action
       switch (finalAction) {
         case "create":
-          calendarResult = await handleCreate(accessToken, finalParams, userTimeZone);
+          calendarResult = await handleCreate(
+            accessToken, 
+            finalParams, 
+            userTimeZone, 
+            finalParams.calendarId
+          );
           break;
         case "update":
-          calendarResult = await handleUpdate(accessToken, finalParams, userTimeZone);
+          calendarResult = await handleUpdate(
+            accessToken, 
+            finalParams, 
+            userTimeZone, 
+            finalParams.calendarId
+          );
           break;
         case "delete":
-          calendarResult = await handleDelete(accessToken, finalParams);
+          calendarResult = await handleDelete(
+            accessToken, 
+            finalParams, 
+            finalParams.calendarId
+          );
           break;
         case "list":
-          calendarResult = await handleList(accessToken, finalParams, followUpResponse);
+          calendarResult = await handleList(
+            accessToken, 
+            finalParams, 
+            followUpResponse
+          );
           break;
         case "search":
-          calendarResult = await handleSearch(accessToken, finalParams, followUpResponse);
+          calendarResult = await handleSearch(
+            accessToken, 
+            finalParams, 
+            followUpResponse
+          );
           break;
         case "none":
         default:
@@ -441,19 +459,41 @@ export async function continueChat(input, history = [], accessToken = null, user
     // Execute single-phase actions as before
     switch (action) {
       case "create":
-        calendarResult = await handleCreate(accessToken, params, userTimeZone);
+        calendarResult = await handleCreate(
+          accessToken, 
+          params, 
+          userTimeZone, 
+          params.calendarId
+        );
         break;
       case "list":
-        calendarResult = await handleList(accessToken, params, geminiResponse);
+        calendarResult = await handleList(
+          accessToken, 
+          params, 
+          geminiResponse
+        );
         break;
       case "search":
-        calendarResult = await handleSearch(accessToken, params, geminiResponse);
+        calendarResult = await handleSearch(
+          accessToken, 
+          params, 
+          geminiResponse
+        );
         break;
       case "update":
-        calendarResult = await handleUpdate(accessToken, params, userTimeZone);
+        calendarResult = await handleUpdate(
+          accessToken, 
+          params, 
+          userTimeZone,
+          params.calendarId
+        );
         break;
       case "delete":
-        calendarResult = await handleDelete(accessToken, params);
+        calendarResult = await handleDelete(
+          accessToken, 
+          params,
+          params.calendarId
+        );
         break;
       case "none":
       default:
