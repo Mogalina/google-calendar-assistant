@@ -26,10 +26,9 @@ router.post("/", async (req, res) => {
     }
 
     // Prefer client-provided timezone
-    const userTimeZone =
-      timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const userTimeZone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
-    // Decide target calendar: shadow if provided, otherwise primary
+    // Decide target calendar identifier
     const targetCalendarId = shadowCalendarId || "primary";
 
     // Pass the input and history to the service to be processed by Gemini
@@ -44,6 +43,7 @@ router.post("/", async (req, res) => {
 
     // Send the structured response from the Gemini service back to the client
     res.json(response);
+    
   } catch (error) {
     console.error("Error calling Gemini:", error);
     return sendErrorResponse(res, 500, "Failed to call Gemini API", {
