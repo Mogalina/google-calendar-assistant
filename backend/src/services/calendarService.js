@@ -4,7 +4,7 @@ import CalendarEvent from "../models/CalendarEvent.js";
 /**
  * Creates a Google Calendar client instance using the user's access token.
  * Returns an authenticated client for performing calendar operations.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @returns {import('googleapis').calendar_v3.Calendar} Authenticated client.
  */
@@ -16,7 +16,7 @@ export function createCalendarClient(accessToken) {
 
 /**
  * Gets a single event by identifier.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} eventId - Identifier of the event.
  * @param {string} calendarId - Calendar identifier.
@@ -29,10 +29,10 @@ export async function getEvent(accessToken, eventId, calendarId = "primary") {
 
   // Create an authenticated Google Calendar client using user's access token
   const calendar = createCalendarClient(accessToken);
-
+  
   const response = await calendar.events.get({
     calendarId,
-    eventId,
+    eventId
   });
 
   return response.data;
@@ -41,17 +41,13 @@ export async function getEvent(accessToken, eventId, calendarId = "primary") {
 /**
  * Creates a new event in the user's calendar.
  * Validates event structure and inserts it using Google Calendar API.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} calendarId - Calendar identifier.
  * @param {Object} eventData - Event details.
  * @returns {Promise<Object>} Created event object.
  */
-export async function createEvent(
-  accessToken,
-  calendarId = "primary",
-  eventData
-) {
+export async function createEvent(accessToken, calendarId = "primary", eventData) {
   // Create an authenticated Google Calendar client using user's access token
   const calendar = createCalendarClient(accessToken);
 
@@ -74,7 +70,7 @@ export async function createEvent(
 /**
  * Updates an existing event in the user's calendar.
  * Validates the updated event data and applies changes using the API.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} eventId - Identifier of the event to update.
  * @param {string} calendarId - Calendar identifier.
@@ -109,7 +105,7 @@ export async function updateEvent(
 
 /**
  * Deletes an event from the user's calendar.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} eventId - Identifier of the event to delete.
  * @param {string} calendarId - Calendar identifier.
@@ -138,7 +134,7 @@ export async function deleteEvent(
 /**
  * Lists events in a given time interval.
  * Defaults to the next 24 hours if no start or end is provided.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {Object} options - Query options.
  * @param {string} options.calendarId - Calendar identifier.
@@ -182,7 +178,7 @@ export async function listEvents(
 
 /**
  * Searches events by a query text in summary, description, or location.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} query - Search string (required).
  * @param {Object} options - Query options.
@@ -218,7 +214,7 @@ export async function searchEvents(
  * Creates a new calendar for the user.
  * Uses Google Calendar API to generate a standalone calendar container which can later hold
  * temporary or generated events.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} summary - Display name of the new calendar.
  * @returns {Promise<Object>} Created calendar object (contains calendarId).
@@ -235,6 +231,7 @@ export async function createCalendar(accessToken, summary) {
     });
 
     return response.data;
+
   } catch (error) {
     console.error("Error creating calendar:", error.response?.data || error);
     throw new Error("Failed to create calendar");
@@ -244,7 +241,7 @@ export async function createCalendar(accessToken, summary) {
 /**
  * Deletes a calendar owned by the user.
  * This permanently removes the calendar and its events from Google Calendar.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} calendarId - Identifier of the calendar to delete.
  * @returns {Promise<Object>} Success confirmation object.
@@ -261,6 +258,7 @@ export async function deleteCalendar(accessToken, calendarId) {
     });
 
     return { success: true };
+
   } catch (error) {
     console.error("Error deleting calendar:", error.response?.data || error);
     throw new Error("Failed to delete calendar");
@@ -269,12 +267,12 @@ export async function deleteCalendar(accessToken, calendarId) {
 
 /**
  * Clones events from one calendar to another within a given time interval.
- * For each cloned event, stores the original event id in
+ * For each cloned event, stores the original event id in 
  * `extendedProperties.private.originalEventId` so we can track lineage later.
- *
+ * 
  * Events are fetched from `sourceCalendarId` between `startInterval` and `endInterval`, then
  * re-inserted into `targetCalendarId` without attendees and with adjusted metadata.
- *
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} sourceCalendarId - Identifier of the source calendar.
  * @param {string} targetCalendarId - Identifier of the target (shadow) calendar.
@@ -309,9 +307,7 @@ export async function cloneEvents(
   }
 
   if (startDate >= endDate) {
-    throw new Error(
-      "Invalid interval: startInterval must be before endInterval."
-    );
+    throw new Error("Invalid interval: startInterval must be before endInterval.");
   }
 
   const timeMin = startDate.toISOString();
@@ -393,19 +389,18 @@ export async function cloneEvents(
 
 /**
  * Initializes a shadow session for a given time interval.
- *
+ * 
  * - Parses and validates the requested interval.
  * - Guards against intervals longer than 7 days.
  * - Creates a new shadow calendar.
- * - Clones events from the primary calendar into the shadow calendar,
- *   keeping lineage via extendedProperties.private.originalEventId.
- *
+ * - Clones events from the primary calendar into the shadow calendar, keeping lineage via 
+ *   `extendedProperties.private.originalEventId`.
+ * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} startStr - ISO date-time string for interval start.
  * @param {string} endStr - ISO date-time string for interval end.
- * @returns {Promise<{ shadowCalendarId: string, events: Array }>}
- *          The shadow calendar id and the cloned events.
- *
+ * @returns {Promise<{ shadowCalendarId: string, events: Array }>} The shadow calendar id and the cloned events.
+ * 
  * @throws {Error} If the interval is invalid or longer than 7 days.
  */
 export async function initializeShadowSession(accessToken, startStr, endStr) {
@@ -453,11 +448,11 @@ export async function initializeShadowSession(accessToken, startStr, endStr) {
 
   // Clone events from primary into the shadow calendar
   const clonedEvents = await cloneEvents(
-    accessToken, // User's access token
-    "primary", // Source calendar id
-    shadowCalendarId, // Shadow calendar id
-    start.toISOString(), // Start time of interval
-    end.toISOString() // End time of interval
+    accessToken,            // User's access token
+    "primary",              // Source calendar id
+    shadowCalendarId,       // Shadow calendar id
+    start.toISOString(),    // Start time of interval
+    end.toISOString()       // End time of interval
   );
 
   // Return the shadow calendar id and the initial state of events
@@ -469,17 +464,12 @@ export async function initializeShadowSession(accessToken, startStr, endStr) {
 
 /**
  * Syncs changes from a shadow calendar back to the primary calendar.
- *  List all events from the shadow calendar.
- *  Determine time boundaries (min start, max end) based on those events.
- *  List primary events in that same interval.
- *  Diff & apply:
- *     - Modified: shadow event has originalEventId → update that event in primary with shadow start/end.
- *     - New:      shadow event has NO originalEventId → create event in primary.
- *     - Deleted:  primary event in range has NO matching originalEventId in shadow → delete from primary.
+ * Compares events in the shadow calendar to those in the primary calendar. Applies modifications, 
+ * creations, and deletions as needed.
  *
  * @param {string} accessToken - OAuth2 access token for Google API.
  * @param {string} shadowCalendarId - The id of the shadow calendar to sync from.
- * @returns {Promise<{ updated: number, created: number, deleted: number }>}
+ * @returns {Promise<{ updated: number, created: number, deleted: number }>} Sync statistics.
  */
 export async function syncShadowToPrimary(accessToken, shadowCalendarId) {
   if (!accessToken) {
@@ -515,25 +505,29 @@ export async function syncShadowToPrimary(accessToken, shadowCalendarId) {
     return { updated: 0, created: 0, deleted: 0 };
   }
 
-  // Determine time boundaries (min start, max end) from shadow events
+  // Determine time boundaries from shadow events
   let minStart = null;
   let maxEnd = null;
 
-  for (const ev of shadowEvents) {
-    const startStr = ev.start?.dateTime || ev.start?.date;
-    const endStr = ev.end?.dateTime || ev.end?.date || startStr;
+  for (const event of shadowEvents) {
+    // Extract start and end date strings
+    const startStr = event.start?.dateTime || event.start?.date;
+    const endStr = event.end?.dateTime || event.end?.date || startStr;
 
     if (!startStr) {
       continue;
     }
 
+    // Parse start and end dates
     const startDate = new Date(startStr);
     const endDate = new Date(endStr);
 
+    // Skip invalid dates
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
       continue;
     }
 
+    // Update lower and upper boundaries
     if (!minStart || startDate < minStart) {
       minStart = startDate;
     }
@@ -588,7 +582,7 @@ export async function syncShadowToPrimary(accessToken, shadowCalendarId) {
 
   const stats = { updated: 0, created: 0, deleted: 0 };
 
-  // Modified + Deleted
+  // Check primary events for modifications or deletions
   for (const primary of primaryEvents) {
     const primaryId = primary.id;
     const shadowMatch = shadowByOriginalId.get(primaryId);
@@ -611,13 +605,13 @@ export async function syncShadowToPrimary(accessToken, shadowCalendarId) {
         stats.updated += 1;
       }
     } else {
-      // Deleted: primary event has no corresponding originalEventId in shadow → delete it
+      // Deleted: primary event has no corresponding `originalEventId` in shadow, delete it
       await deleteEvent(accessToken, primaryId, "primary");
       stats.deleted += 1;
     }
   }
 
-  // New events: shadow events with no originalEventId → create in primary
+  // New events: shadow events with no `originalEventId`, create in primary
   for (const shadow of newShadowEvents) {
     const newEventData = {
       summary: shadow.summary,
