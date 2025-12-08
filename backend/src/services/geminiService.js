@@ -107,9 +107,16 @@ async function handleCreate(accessToken, params, userTimeZone, calendarId = "pri
 
 /**
  * Lists upcoming events and appends a formatted list to the Gemini response.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
+ * @param {Object} params - The listing parameters.
+ * @param {Object} geminiResponse - The Gemini response object to append results to.
+ * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
+ * @returns {Promise<Array>} The list of events retrieved from the calendar.
  */
-async function handleList(accessToken, params, geminiResponse) {
+async function handleList(accessToken, params, geminiResponse, calendarId = "primary") {
   const calendarResult = await listEvents(accessToken, {
+    calendarId: calendarId,
     maxResults: params.maxResults || 10,
     start: params.start,
     end: params.end
@@ -130,13 +137,20 @@ async function handleList(accessToken, params, geminiResponse) {
 
 /**
  * Searches events based on a query and appends results to the Gemini response.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
+ * @param {Object} params - The search parameters.
+ * @param {Object} geminiResponse - The Gemini response object to append results to.
+ * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
+ * @returns {Promise<Array>} The list of events matching the search query.
  */
-async function handleSearch(accessToken, params, geminiResponse) {
+async function handleSearch(accessToken, params, geminiResponse, calendarId = "primary") {
   if (!params.query) {
     throw new Error("Search query is required");
   }
 
   const calendarResult = await searchEvents(accessToken, params.query, {
+    calendarId: calendarId,
     maxResults: params.maxResults || 10,
   });
 
@@ -211,8 +225,13 @@ async function handleDelete(accessToken, params, calendarId = "primary") {
 /**
  * Gathers calendar context by executing multiple search/list operations.
  * Returns formatted context string to be sent back to Gemini.
+ * 
+ * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
+ * @param {Object} params - The parameters containing operations to perform.
+ * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
+ * @returns {Promise<string>} The formatted context results.
  */
-async function handleGatherContext(accessToken, params) {
+async function handleGatherContext(accessToken, params, calendarId = "primary") {
   const operations = params.operations || [];
   const contextResults = [];
 
@@ -220,6 +239,7 @@ async function handleGatherContext(accessToken, params) {
     try {
       if (op.type === "list") {
         const events = await listEvents(accessToken, {
+          calendarId: calendarId,
           maxResults: op.maxResults || 10,
           start: op.start,
           end: op.end
@@ -237,6 +257,7 @@ async function handleGatherContext(accessToken, params) {
 
       } else if (op.type === "search") {
         const events = await searchEvents(accessToken, op.query, {
+          calendarId: calendarId,
           maxResults: op.maxResults || 10
         });
 
@@ -266,13 +287,23 @@ async function handleGatherContext(accessToken, params) {
  * @param {Array<object>} history - The full conversation history sent by the client.
  * @param {string|null} accessToken - Optional OAuth2 access token for calendar operations.
  * @param {string} userTimeZone - The user's current timezone.
- * @returns {Promise<{output: string, action?: string, calendarResult?: any, needsFollowup?: boolean}>} 
+ * @param {string} calendarId - The calendar identifier to operate on.
+ * @returns {Promise<object>} The Gemini response including output text, action taken, and any calendar results.
  */
-export async function continueChat(input, history = [], accessToken = null, userTimeZone = "UTC") {
+export async function continueChat(
+  input, 
+  history = [], 
+  accessToken = null,
+  userTimeZone = "UTC",
+  calendarId = "primary"
+) {
   // Require the `input` field to be present
   if (!input || typeof input !== "string") {
     throw new Error("Invalid user input for Gemini");
   }
+
+  // Decide which calendar we actually operate on
+  console.log("Gemini: Using calendar:", calendarId);
 
   // Require access token for calendar operations
   if (!accessToken) {
@@ -327,7 +358,7 @@ export async function continueChat(input, history = [], accessToken = null, user
     
     // Handle context gathering specially - it needs a follow-up
     if (action === "gather_context") {
-      const contextData = await handleGatherContext(accessToken, params);
+      const contextData = await handleGatherContext(accessToken, params, calendarId);
       
       // Now make a second call to Gemini with the gathered context
       const followUpInput = `
@@ -360,7 +391,7 @@ export async function continueChat(input, history = [], accessToken = null, user
             accessToken, 
             finalParams, 
             userTimeZone, 
-            finalParams.calendarId
+            finalParams.calendarId || calendarId
           );
           break;
         case "update":
@@ -368,28 +399,30 @@ export async function continueChat(input, history = [], accessToken = null, user
             accessToken, 
             finalParams, 
             userTimeZone, 
-            finalParams.calendarId
+            finalParams.calendarId || calendarId
           );
           break;
         case "delete":
           calendarResult = await handleDelete(
             accessToken, 
             finalParams, 
-            finalParams.calendarId
+            finalParams.calendarId || calendarId
           );
           break;
         case "list":
           calendarResult = await handleList(
             accessToken, 
             finalParams, 
-            followUpResponse
+            followUpResponse,
+            finalParams.calendarId || calendarId
           );
           break;
         case "search":
           calendarResult = await handleSearch(
             accessToken, 
             finalParams, 
-            followUpResponse
+            followUpResponse,
+            finalParams.calendarId || calendarId
           );
           break;
         case "none":
@@ -463,21 +496,23 @@ export async function continueChat(input, history = [], accessToken = null, user
           accessToken, 
           params, 
           userTimeZone, 
-          params.calendarId
+          params.calendarId || calendarId
         );
         break;
       case "list":
         calendarResult = await handleList(
           accessToken, 
           params, 
-          geminiResponse
+          geminiResponse,
+          params.calendarId || calendarId
         );
         break;
       case "search":
         calendarResult = await handleSearch(
           accessToken, 
           params, 
-          geminiResponse
+          geminiResponse,
+          params.calendarId || calendarId
         );
         break;
       case "update":
@@ -485,14 +520,14 @@ export async function continueChat(input, history = [], accessToken = null, user
           accessToken, 
           params, 
           userTimeZone,
-          params.calendarId
+          params.calendarId || calendarId
         );
         break;
       case "delete":
         calendarResult = await handleDelete(
           accessToken, 
           params,
-          params.calendarId
+          params.calendarId || calendarId
         );
         break;
       case "none":
