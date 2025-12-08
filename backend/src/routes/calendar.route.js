@@ -126,4 +126,22 @@ router.post("/shadow/commit", requireAccessToken, async (req, res) => {
   }
 });
 
+/**
+ * Discards a shadow calendar session without syncing.
+ * Permanently deletes the specified shadow calendar.
+ */
+router.delete("/shadow/:calendarId", requireAccessToken, async (req, res) => {
+  try {
+    const { calendarId } = req.params;
+    
+    // Call service to delete the calendar
+    await calendarService.deleteCalendar(req.accessToken, calendarId);
+
+    return res.status(204).end();
+
+  } catch (err) {
+    return handleGoogleApiError(res, err);
+  }
+});
+
 export default router;
