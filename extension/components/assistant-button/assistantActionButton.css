@@ -1,0 +1,43 @@
+/* Root container resets all inherited styles to avoid conflicts with host page */
+.assistant-button-container {
+  position: fixed;
+  right: 45px;
+  bottom: 45px;
+  z-index: 2147483647;
+  cursor: grab;
+}
+
+/* Floating assistant button styles */
+.assistant-button {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0;
+  transition: filter 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 8px rgba(43, 34, 34, 0.2), 0 8px 16px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+}
+
+/* Hover effect adds subtle highlight and scale for better feedback */
+.assistant-button:hover {
+  filter: brightness(1.05);
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25), 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Icon inside the assistant button */
+.assistant-button .assistant-icon {
+  width: 48px; 
+  height: 48px;
+  object-fit: cover;
+  pointer-events: none;
+  display: block;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05); 
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}

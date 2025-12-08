@@ -1,0 +1,88 @@
+{
+  "name": "google-calendar-assistant-backend",
+  "version": "1.0.0",
+  "description": "Backend service for the Google Calendar Assistant Chrome Extension.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@google-cloud/secret-manager": "^4.1.0",
+    "@google/genai": "^1.0.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.21.2",
+    "googleapis": "^121.0.0",
+    "helmet": "^7.0.0",
+    "js-yaml": "^4.1.0",
+    "morgan": "^1.10.0",
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "google-calendar",
+    "gemini-ai",
+    "calendar-assistant",
+    "chrome-extension",
+    "nodejs-backend",
+    "express-api",
+    "oauth2",
+    "ai-scheduling",
+    "productivity",
+    "automation"
+  ],
+  "author": "Eric Moghioroș <eric.moghioros000@gmail.com>",
+  "contributors": [
+    {
+      "name": "Eric Moghioroș",
+      "email": "eric.moghioros000@gmail.com",
+      "role": "Project Lead / DevOps Engineer",
+      "url": "https://github.com/Mogalina"
+    },
+    {
+      "name": "Andreea Bianca Croitoru",
+      "email": "andreeacroitoruro01@gmail.com",
+      "role": "Frontend Engineer",
+      "url": "https://github.com/crandreea"
+    },
+    {
+      "name": "Bianca Pulpă",
+      "email": "biancabia41352@gmail.com",
+      "role": "Backend Engineer",
+      "url": "https://github.com/BiancaBya"
+    },
+    {
+      "name": "Dragoș Marinescu",
+      "email": "marinescudragos2014@gmail.com",
+      "role": "AI Engineer",
+      "url": "https://github.com/DragosMarinescu19"
+    },
+    {
+      "name": "Alexandra Cristina Puscaș",
+      "email": "alepuscas04@gmail.com",
+      "role": "Frontend Engineer",
+      "url": "https://github.com/puscasale"
+    },
+    {
+      "name": "Bogdan Rebeleș",
+      "email": "bogdan.rebeles@outlook.com",
+      "role": "Backend Engineer",
+      "url": "https://github.com/rebelesbb"
+    }
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mogalina/google-calendar-assistant.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

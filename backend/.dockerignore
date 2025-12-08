@@ -1,0 +1,59 @@
+# Node.js dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+google-credentials.json
+service-account.json
+auth_token.json
+
+# Git
+.git
+.gitignore
+.gitattributes
+.github/
+.gitlab/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+# Build artifacts
+dist/
+build/
+out/
+.cache/
+.temp/
+logs/
+*.log
+tmp/
+temp/
+
+# Test artifacts
+coverage/
+test-results/
+jest/
+cypress/
+
+# Docker
+Dockerfile*
+.docker/
+docker-compose*.yml
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+.Spotlight-V100
+.Trashes
