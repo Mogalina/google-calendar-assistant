@@ -4,53 +4,53 @@
  */
 function sendInputToBackground(textInput) {
   try {
-    // Validate input before sending
     if (!textInput || typeof textInput !== "string") {
       console.warn("Content script: Invalid text input:", textInput);
       return;
     }
-
-    const message = {
-      action: "GCA_PROCESS_INPUT", 
-      data: textInput 
-    };
+    const message = { action: "GCA_PROCESS_INPUT", data: textInput };
     console.log("Content script: Sending message to background:", message);
-
     chrome.runtime.sendMessage(message, (response) => {
       if (chrome.runtime.lastError) {
-        // Handle case where background script is unavailable
         console.error("Content script: Message failed:", chrome.runtime.lastError.message);
         return;
       }
-
       if (response && response.status === "received") {
         console.log("Content script: Background confirmed receipt of message.");
       } else {
         console.warn("Content script: Unexpected response from background:", response);
       }
     });
-
   } catch (error) {
     console.error("Content script: Error sending message to background:", error);
   }
 }
 
+// Listener for messages from the chat panel (UI)
+window.addEventListener("message", (event) => {
+  // Security check: only accept messages from same window
+  if (event.source !== window) return;
+
+  if (event.data?.type === "GCA_CALENDAR_CREATED") {
+    const { shadowCalendarId } = event.data.payload;
+    console.log("Content script: Received GCA_CALENDAR_CREATED. Reloading to focus on:", shadowCalendarId);
+
+    if (shadowCalendarId) {
+      // Use the 'cid' parameter to focus Google Calendar on the specific shadow calendar
+      // This refreshes the page and selects the calendar
+      const targetUrl = `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(shadowCalendarId)}`;
+      window.location.href = targetUrl;
+    }
+  }
+});
+
 /**
  * Runs once the content script is fully loaded.
- * Ensures script executes only in the top frame, not inside iframes.
  */
 window.addEventListener("load", () => {
   try {
-    // Prevent running inside iframes
-    if (window.self !== window.top) {
-      return; 
-    }
-
+    if (window.self !== window.top) return; 
     console.log("Content script: Script fully loaded.");
-    
-    const testCommand = "Create an event tomorrow at 3 PM for the GCA meeting.";
-    sendInputToBackground(testCommand);
-    
   } catch (error) {
     console.error("Content script: Error during load event handling:", error);
   }
