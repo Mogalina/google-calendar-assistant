@@ -59,9 +59,6 @@
       window.postMessage({ type: "GCA_START_AUTH" }, "*");
     }
 
-    /**
-     * Disables all existing reschedule buttons in the chat.
-     */
     function disableAllPreviousButtons() {
       const allButtons = root.querySelectorAll(".reschedule-link-button");
       allButtons.forEach(btn => {
@@ -70,9 +67,6 @@
       });
     }
 
-    /**
-     * Attaches "Apply all | Ignore suggestion" inline next to the time
-     */
     function attachInlineRescheduleButtonsForBubble(bubbleEl) {
       if (!bubbleEl) return;
       const messageEl = bubbleEl.closest(".message");
@@ -136,7 +130,8 @@
         setShadowCalendarId(null);
         setReschedulingMode(false);
         
-        window.location.reload(); 
+        // Redirect back to primary calendar view
+        window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
 
       } catch (err) {
         console.error(err);
@@ -167,12 +162,12 @@
         smartReschedulingMode = false;
         setShadowCalendarId(null);
         setReschedulingMode(false);
-        window.location.reload();
+        // Redirect back to primary calendar view
+        window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
       }
     }
 
     window.addEventListener("beforeunload", () => {
-      // Intentionally left empty to allow persistence across reloads
     });
 
     let root = document.currentScript?.getRootNode();
@@ -272,7 +267,7 @@
         if (savedShadowId) {
           shadowCalendarId = savedShadowId;
           currentShadowCalendarId = savedShadowId;
-          // Re-attach buttons to the last AI response if we are still in mode
+          
           const aiMessages = chatMessages.querySelectorAll(".message.ai");
           if (aiMessages.length > 0) {
              const lastAi = aiMessages[aiMessages.length - 1];
@@ -410,13 +405,10 @@
             lastAiBubble.style.color = "inherit";
 
             // Button Logic:
-            // 1. If in smart mode AND
-            // 2. Action indicates modification (update/create/delete) OR init session
-            // Then disable old buttons and show new ones.
             const isModification = ["update", "create", "delete", "init_shadow_session"].includes(data.action);
             
             if (smartReschedulingMode && isModification) {
-              disableAllPreviousButtons(); // Disable buttons on previous messages
+              disableAllPreviousButtons(); 
               if (shadowCalendarId) {
                 attachInlineRescheduleButtonsForBubble(lastAiBubble);
               }

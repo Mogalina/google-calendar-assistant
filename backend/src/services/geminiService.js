@@ -172,6 +172,7 @@ async function handleSearch(accessToken, params, geminiResponse, targetCalendarI
 
 /**
  * Updates an existing calendar event.
+ * Includes fallback logic to map Original IDs to Shadow IDs if a 404 occurs.
  */
 async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId = "primary") {
   if (!params.eventId) {
@@ -179,10 +180,40 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
   }
   
   const calendarId = resolveCalendarId(params, targetCalendarId);
-  console.log(`[GeminiService] Updating event ${params.eventId} in calendar: ${calendarId}`);
+  let eventId = params.eventId;
+  let currentEvent;
 
-  // Fetch the current event to preserve existing data
-  const currentEvent = await getEvent(accessToken, params.eventId, calendarId);
+  console.log(`[GeminiService] Updating event ${eventId} in calendar: ${calendarId}`);
+
+  try {
+    // Attempt to fetch the event directly
+    currentEvent = await getEvent(accessToken, eventId, calendarId);
+  } catch (error) {
+    // Check if error is 404 (Not Found) and we are working on a shadow calendar
+    // This happens when LLM uses the Primary Event ID to update the Shadow Calendar
+    const isNotFound = error.code === 404 || error.response?.status === 404;
+    
+    if (isNotFound && calendarId !== "primary") {
+      console.log(`[GeminiService] Event ${eventId} not found in shadow ${calendarId}. Checking lineage...`);
+      
+      // Fetch all events in the shadow calendar to find a match by originalEventId
+      const shadowEvents = await listEvents(accessToken, { calendarId });
+      const match = shadowEvents.find(
+        (e) => e.extendedProperties?.private?.originalEventId === eventId
+      );
+
+      if (match) {
+        console.log(`[GeminiService] Mapped original ID ${eventId} to shadow ID ${match.id}`);
+        eventId = match.id;
+        currentEvent = match; // We already have the event object from the list
+      } else {
+        console.error(`[GeminiService] No matching shadow event found for ID ${eventId}`);
+        throw error; // Propagate if we really can't find it
+      }
+    } else {
+      throw error;
+    }
+  }
 
   // Merge updates with existing event data
   const updateData = {
@@ -201,7 +232,7 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
     updateData.end.timeZone = userTimeZone;
   }
 
-  return await updateEvent(accessToken, params.eventId, calendarId, updateData);
+  return await updateEvent(accessToken, eventId, calendarId, updateData);
 }
 
 /**

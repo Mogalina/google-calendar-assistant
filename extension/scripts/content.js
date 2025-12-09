@@ -37,10 +37,15 @@ window.addEventListener("message", (event) => {
 
     if (shadowCalendarId) {
       // Use the 'cid' parameter to focus Google Calendar on the specific shadow calendar
-      // This refreshes the page and selects the calendar
       const targetUrl = `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(shadowCalendarId)}`;
       window.location.href = targetUrl;
     }
+  }
+
+  // Handle switching back to primary calendar view
+  if (event.data?.type === "GCA_SWITCH_CONTEXT_PRIMARY") {
+    console.log("Content script: Switching back to primary calendar view.");
+    window.location.href = "https://calendar.google.com/calendar/u/0/r";
   }
 });
 
