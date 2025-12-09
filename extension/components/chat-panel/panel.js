@@ -11,6 +11,9 @@
   // The base endpoint for the backend server handling requests
   const API_URL = "http://localhost:8080";
 
+  // Tracks the current shadow calendar used during a smart reschedule session
+  let currentShadowCalendarId = null;
+
   // Check if initialization has already happened to prevent attaching multiple listeners
   if (window.__panelInitialized) return;
   window.__panelInitialized = true;
@@ -617,6 +620,19 @@
 
           const gcaAccessToken = gcaTokenResp.access_token;
 
+          // Build the request payload for the backend
+          const requestBody = {
+            input: msg,
+            history: history,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          };
+
+          // If a shadow calendar has been initialized earlier in this session, include its ID so
+          // the backend can keep using the same calendar
+          if (currentShadowCalendarId) {
+            requestBody.shadowCalendarId = currentShadowCalendarId;
+          }
+
           // Send user response to the assistant backend
           const response = await fetch(API_URL + "/api/gemini", {
             method: "POST",
@@ -624,20 +640,49 @@
               "Content-Type": "application/json",
               Authorization: `Bearer ${gcaAccessToken}`,
             },
-            body: JSON.stringify({
-              input: msg,
-              history: history,
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
           if (!response.ok) {
             throw new Error(`Server error: ${response.status}`);
           }
 
-          // Process API Response
+          // Process API response
           const data = await response.json();
+          console.log("Panel: /api/gemini response:", data);
+
+          // If the backend has just initialized a new shadow session, remember the shadow calendar
+          // ID so we can send it with future requests
+          if (data.action === "init_shadow_session") {
+            const shadowId = data.shadowCalendarId || data.calendarResult?.shadowCalendarId;
+
+            if (shadowId) {
+              currentShadowCalendarId = shadowId;
+              console.log("Saved shadow calendar id:", currentShadowCalendarId);
+            }
+          }
+
           const aiMessage = data.output || data.text || "(No response)";
+
+          // If backend returns a new shadow calendar id, notify the content script
+          if (
+            data &&
+            data.action === "init_shadow_session" &&
+            data.calendarResult &&
+            data.calendarResult.shadowCalendarId
+          ) {
+            window.postMessage(
+              {
+                type: "GCA_CALENDAR_CREATED",
+                payload: {
+                  // Send the ID so the content script can react to it 
+                  shadowCalendarId: data.calendarResult.shadowCalendarId,
+                },
+              },
+              "*"
+            );
+            console.log("Panel: /api/gemini response:", data);
+          }
 
           // Replace pulsing bubble with final assistant text response
           const lastAiBubble = chatMessages.querySelector(
@@ -786,8 +831,8 @@
     // Boot up the chat (load history or welcome message)
     initializeChat();
 
-    // Add event containment logic for the shadow root to prevent event leakage.
-    // This stops events inside the chat from bubbling up to the host page (Google Calendar).
+    // Add event containment logic for the shadow root to prevent event leakage
+    // This stops events inside the chat from bubbling up to the host page (Google Calendar)
     if (root instanceof ShadowRoot) {
       const containmentEvents = [
         "keydown",
