@@ -415,6 +415,26 @@
           const data = await response.json();
           const aiMessage = data.output || data.text || "(No response)";
 
+          // If backend returns a new shadow calendar id, notify the content script
+          if (
+            data &&
+            data.action === "init_shadow_session" &&
+            data.calendarResult &&
+            data.calendarResult.shadowCalendarId
+          ) {
+            window.postMessage(
+              {
+                type: "GCA_CALENDAR_CREATED",
+                payload: {
+                  // Send the ID so the content script can react to it 
+                  shadowCalendarId: data.calendarResult.shadowCalendarId,
+                },
+              },
+              "*"
+            );
+            console.log("Panel: /api/gemini response:", data);
+          }
+
           // Replace pulsing bubble with final assistant text response
           const lastAiBubble = chatMessages.querySelector(
             ".message.ai .message-bubble.pulse"
