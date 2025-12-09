@@ -23,6 +23,8 @@
    */
   function initializePanel() {
     const GCA_CONSENT_KEY = "gcaCalendarConsent";
+    const GCA_RESCHEDULE_MODE_KEY = "gcaReschedulingMode";
+    const GCA_SHADOW_CALENDAR_KEY = "gcaShadowCalendarId";
 
     let smartReschedulingMode = false;
     let shadowCalendarId = null;
@@ -48,6 +50,58 @@
     function setCalendarConsent(value) {
       try {
         window.localStorage.setItem(GCA_CONSENT_KEY, value ? "true" : "false");
+      } catch (e) {}
+    }
+
+    /**
+     * Gets the rescheduling mode state from localStorage.
+     *
+     * @returns {boolean} True if rescheduling mode is active.
+     */
+    function getReschedulingMode() {
+      try {
+        return window.localStorage.getItem(GCA_RESCHEDULE_MODE_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    /**
+     * Saves the rescheduling mode state to localStorage.
+     *
+     * @param {boolean} value - The rescheduling mode state.
+     */
+    function setReschedulingMode(value) {
+      try {
+        window.localStorage.setItem(GCA_RESCHEDULE_MODE_KEY, value ? "true" : "false");
+      } catch (e) {}
+    }
+
+    /**
+     * Gets the shadow calendar ID from localStorage.
+     *
+     * @returns {string|null} The shadow calendar ID or null.
+     */
+    function getShadowCalendarId() {
+      try {
+        return window.localStorage.getItem(GCA_SHADOW_CALENDAR_KEY);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    /**
+     * Saves the shadow calendar ID to localStorage.
+     *
+     * @param {string|null} value - The shadow calendar ID.
+     */
+    function setShadowCalendarId(value) {
+      try {
+        if (value) {
+          window.localStorage.setItem(GCA_SHADOW_CALENDAR_KEY, value);
+        } else {
+          window.localStorage.removeItem(GCA_SHADOW_CALENDAR_KEY);
+        }
       } catch (e) {}
     }
 
@@ -176,6 +230,10 @@
 
         shadowCalendarId = null;
         smartReschedulingMode = false;
+        
+        // Clear persistent state
+        setShadowCalendarId(null);
+        setReschedulingMode(false);
       } catch (err) {
         console.error(err);
         await appendMessage("ai", "Failed to apply changes. Please try again.");
@@ -206,6 +264,10 @@
       } finally {
         shadowCalendarId = null;
         smartReschedulingMode = false;
+        
+        // Clear persistent state
+        setShadowCalendarId(null);
+        setReschedulingMode(false);
       }
     }
 
@@ -339,6 +401,7 @@
     /**
      * Loads saved conversation and populates the chat.
      * If none exists, shows the welcome message.
+     * Also restores rescheduling mode if it was active.
      */
     async function initializeChat() {
       const messages = await loadMessages();
@@ -364,6 +427,25 @@
           skipSave: false,
           timestamp: new Date().toISOString(),
         });
+      }
+
+      // Restore rescheduling mode state if it was active
+      const wasReschedulingActive = getReschedulingMode();
+      const savedShadowId = getShadowCalendarId();
+      
+      if (wasReschedulingActive) {
+        smartReschedulingMode = true;
+        
+        if (savedShadowId) {
+          shadowCalendarId = savedShadowId;
+        }
+        
+        // Show the suggestion tag
+        if (suggestionTag) {
+          suggestionTag.style.display = "flex";
+        }
+        
+        console.log("Restored rescheduling mode", savedShadowId ? `with shadow calendar: ${shadowCalendarId}` : "");
       }
     }
 
@@ -573,6 +655,10 @@
 
               if (shadowCalendarId) {
                 console.log("Shadow calendar created:", shadowCalendarId);
+                
+                // Persist the shadow calendar ID
+                setShadowCalendarId(shadowCalendarId);
+                
                 attachInlineRescheduleButtonsForBubble(lastAiBubble);
               }
             }
@@ -628,6 +714,20 @@
         // Also send explicit clear message to ensure storage is wiped in background
         window.postMessage({ type: "CLEAR_MESSAGES" }, "*");
 
+        // Clear rescheduling mode when clearing conversation
+        smartReschedulingMode = false;
+        shadowCalendarId = null;
+        setReschedulingMode(false);
+        setShadowCalendarId(null);
+        
+        // Hide suggestion tag
+        if (suggestionTag) {
+          suggestionTag.style.display = "none";
+        }
+        
+        // Disable any inline buttons
+        disableInlineRescheduleButtons();
+
         // Re-add welcome message to reset state
         await appendMessage("ai", WELCOME_MESSAGE, {
           skipSave: true,
@@ -664,6 +764,10 @@
         dropdownMenu.style.display = "none";
 
         smartReschedulingMode = true;
+        
+        // Persist the rescheduling mode
+        setReschedulingMode(true);
+        
         console.log("Smart rescheduling mode ON");
       });
 
@@ -671,8 +775,8 @@
       removeSuggestion.addEventListener("click", () => {
         suggestionTag.style.display = "none";
         smartReschedulingMode = false;
-        disableInlineRescheduleButtons()
-        exitReschedulingMode()
+        disableInlineRescheduleButtons();
+        exitReschedulingMode();
       });
     }
 
