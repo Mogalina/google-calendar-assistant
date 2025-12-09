@@ -350,12 +350,8 @@
    * @param {Object} payload - Optional data sent from panel.js 
    */
   function handleCalendarCreated(payload) {
-    // Debug log so we can see the payload in DevTools
     console.log("InjectChatPanel: shadow calendar created", payload);
-  
-    // Reload the host page so Google Calendar fetches the updated calendar list
     window.location.reload();
   }
   
-
 })();

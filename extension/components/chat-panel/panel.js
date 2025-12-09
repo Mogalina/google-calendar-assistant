@@ -416,22 +416,25 @@
           const aiMessage = data.output || data.text || "(No response)";
 
           // If backend returns a new shadow calendar id, notify the content script
-          if (data && data.shadowCalendarId) {
+          if (
+            data &&
+            data.action === "init_shadow_session" &&
+            data.calendarResult &&
+            data.calendarResult.shadowCalendarId
+          ) {
             window.postMessage(
-            {
-              type: "GCA_CALENDAR_CREATED",
-              payload: {
-              // We send the id so the content script can log/use it if needed
-              shadowCalendarId: data.shadowCalendarId,
+              {
+                type: "GCA_CALENDAR_CREATED",
+                payload: {
+                  // Send the ID so the content script can react to it 
+                  shadowCalendarId: data.calendarResult.shadowCalendarId,
+                },
               },
-            },
-            "*"
-          );
-
-        // Helpful debug log to verify the response structure
-        console.log("PANEL: /api/gemini response = ", data);
-      }
-
+              "*"
+            );
+            // Helpful debug log to verify the response structure
+            console.log("PANEL: /api/gemini response = ", data);
+          }
 
           // Replace pulsing bubble with final assistant text response
           const lastAiBubble = chatMessages.querySelector(
