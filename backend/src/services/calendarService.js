@@ -393,14 +393,13 @@ export async function cloneEvents(
  * - Parses and validates the requested interval.
  * - Guards against intervals longer than 7 days.
  * - Creates a new shadow calendar.
- * - Clones events from the primary calendar into the shadow calendar,
- *   keeping lineage via extendedProperties.private.originalEventId.
+ * - Clones events from the primary calendar into the shadow calendar, keeping lineage via 
+ *   `extendedProperties.private.originalEventId`.
  * 
  * @param {string} accessToken - OAuth2 access token.
  * @param {string} startStr - ISO date-time string for interval start.
  * @param {string} endStr - ISO date-time string for interval end.
- * @returns {Promise<{ shadowCalendarId: string, events: Array }>}
- *          The shadow calendar id and the cloned events.
+ * @returns {Promise<{ shadowCalendarId: string, events: Array }>} The shadow calendar id and the cloned events.
  * 
  * @throws {Error} If the interval is invalid or longer than 7 days.
  */
@@ -461,4 +460,171 @@ export async function initializeShadowSession(accessToken, startStr, endStr) {
     shadowCalendarId,
     events: clonedEvents,
   };
+}
+
+/**
+ * Syncs changes from a shadow calendar back to the primary calendar.
+ * Compares events in the shadow calendar to those in the primary calendar. Applies modifications, 
+ * creations, and deletions as needed.
+ *
+ * @param {string} accessToken - OAuth2 access token for Google API.
+ * @param {string} shadowCalendarId - The id of the shadow calendar to sync from.
+ * @returns {Promise<{ updated: number, created: number, deleted: number }>} Sync statistics.
+ */
+export async function syncShadowToPrimary(accessToken, shadowCalendarId) {
+  if (!accessToken) {
+    throw new Error("Access token is required.");
+  }
+
+  if (!shadowCalendarId) {
+    throw new Error("Shadow calendar identifier is required.");
+  }
+
+  const calendar = createCalendarClient(accessToken);
+
+  // List all events in the shadow calendar with pagination
+  const shadowEvents = [];
+  let pageToken;
+
+  do {
+    const response = await calendar.events.list({
+      calendarId: shadowCalendarId,
+      singleEvents: true,
+      orderBy: "startTime",
+      maxResults: 50,
+      pageToken,
+    });
+
+    const items = response.data.items || [];
+    shadowEvents.push(...items);
+    pageToken = response.data.nextPageToken;
+  } while (pageToken);
+
+  // If shadow calendar has no events, nothing to sync
+  if (shadowEvents.length === 0) {
+    return { updated: 0, created: 0, deleted: 0 };
+  }
+
+  // Determine time boundaries from shadow events
+  let minStart = null;
+  let maxEnd = null;
+
+  for (const event of shadowEvents) {
+    // Extract start and end date strings
+    const startStr = event.start?.dateTime || event.start?.date;
+    const endStr = event.end?.dateTime || event.end?.date || startStr;
+
+    if (!startStr) {
+      continue;
+    }
+
+    // Parse start and end dates
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+
+    // Skip invalid dates
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      continue;
+    }
+
+    // Update lower and upper boundaries
+    if (!minStart || startDate < minStart) {
+      minStart = startDate;
+    }
+    if (!maxEnd || endDate > maxEnd) {
+      maxEnd = endDate;
+    }
+  }
+
+  // If there are no valid boundaries, stop
+  if (!minStart || !maxEnd) {
+    return { updated: 0, created: 0, deleted: 0 };
+  }
+
+  const timeMin = minStart.toISOString();
+  const timeMax = maxEnd.toISOString();
+
+  // List events in primary calendar within the same boundaries
+  const primaryEvents = [];
+  pageToken = undefined;
+
+  do {
+    const response = await calendar.events.list({
+      calendarId: "primary",
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      orderBy: "startTime",
+      maxResults: 50,
+      pageToken,
+    });
+
+    const items = response.data.items || [];
+    primaryEvents.push(...items);
+    pageToken = response.data.nextPageToken;
+  } while (pageToken);
+
+  // Build indexes for diffing
+  const shadowByOriginalId = new Map();
+  const newShadowEvents = [];
+
+  for (const shadow of shadowEvents) {
+    const originalId = shadow.extendedProperties?.private?.originalEventId;
+
+    if (originalId) {
+      // Modified candidate (shadow corresponds to an original primary event)
+      shadowByOriginalId.set(originalId, shadow);
+    } else {
+      // New event only existing in shadow
+      newShadowEvents.push(shadow);
+    }
+  }
+
+  const stats = { updated: 0, created: 0, deleted: 0 };
+
+  // Check primary events for modifications or deletions
+  for (const primary of primaryEvents) {
+    const primaryId = primary.id;
+    const shadowMatch = shadowByOriginalId.get(primaryId);
+
+    if (shadowMatch) {
+      // Modified: compare start/end and update if changed
+      const sameStart =
+        JSON.stringify(primary.start) === JSON.stringify(shadowMatch.start);
+      const sameEnd =
+        JSON.stringify(primary.end) === JSON.stringify(shadowMatch.end);
+
+      if (!sameStart || !sameEnd) {
+        const updatedEventData = {
+          ...primary,
+          start: shadowMatch.start,
+          end: shadowMatch.end,
+        };
+
+        await updateEvent(accessToken, primaryId, "primary", updatedEventData);
+        stats.updated += 1;
+      }
+    } else {
+      // Deleted: primary event has no corresponding `originalEventId` in shadow, delete it
+      await deleteEvent(accessToken, primaryId, "primary");
+      stats.deleted += 1;
+    }
+  }
+
+  // New events: shadow events with no `originalEventId`, create in primary
+  for (const shadow of newShadowEvents) {
+    const newEventData = {
+      summary: shadow.summary,
+      start: shadow.start,
+      end: shadow.end,
+      description: shadow.description,
+      attendees: shadow.attendees,
+      location: shadow.location,
+    };
+
+    await createEvent(accessToken, "primary", newEventData);
+    stats.created += 1;
+  }
+
+  return stats;
 }

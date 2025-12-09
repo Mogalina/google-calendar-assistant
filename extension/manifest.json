@@ -30,8 +30,7 @@
       "js": [
         "scripts/content.js",
         "components/assistant-button/assistantActionButton.js",
-        "scripts/injectChatPanel.js",
-        "scripts/panel.js"
+        "components/chat-panel/injectChatPanel.js"
       ],
       "css": [
         "components/assistant-button/assistantActionButton.css",
@@ -55,8 +54,7 @@
         "components/chat-panel/*",
         "components/assistant-button/*",
         "assets/**/*",
-        "icons/*",
-        "scripts/panel.js"
+        "icons/*"
       ],
       "matches": [
         "*://calendar.google.com/*"

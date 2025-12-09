@@ -33,7 +33,7 @@
     switch (type) {
       // Triggered when the floating action button is clicked
       case "ASSISTANT_BUTTON_CLICK":
-        toggleChatPanel();
+        showChatPanel();
         break;
       
       // Requests closing the panel
@@ -238,7 +238,7 @@
 
     // Inject the main panel logic script
     const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("scripts/panel.js");
+    script.src = chrome.runtime.getURL("components/chat-panel/panel.js");
     script.setAttribute("data-panel-id", panelHost.getAttribute("data-panel-id"));
 
     script.onload = () => console.log("Panel script loaded successfully");
@@ -248,21 +248,12 @@
   }
 
   /**
-   * Toggles the chat panel’s visibility.
-   * Creates the panel on first use, then alternates showing and hiding.
-   */
-  async function toggleChatPanel() {
-    const panel = createChatPanel();
-    if (panel.style.display === "none") {
-      showChatPanel();
-    }
-  }
-
-  /**
    * Shows the chat panel and resets it to full height.
    * Ensures the display properties and transforms are set to visible states.
    */
   function showChatPanel() {
+    createChatPanel();
+
     if (!panelHost) {
       return;
     }
@@ -340,7 +331,7 @@
    * Sends a message to toggle the assistant button visibility.
    * Used to coordinate between the chat panel state and the floating button state.
    * 
-   * * @param {boolean} show - True to show the button, false to hide the button.
+   * @param {boolean} show - True to show the button, false to hide the button.
    */
   function toggleAssistantButton(show) {
     window.postMessage({ type: "TOGGLE_ASSISTANT_BUTTON", show }, "*");
