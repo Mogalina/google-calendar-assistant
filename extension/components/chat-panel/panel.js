@@ -59,6 +59,7 @@
       window.postMessage({ type: "GCA_START_AUTH" }, "*");
     }
 
+    // Disable all previous buttons to prevent "stale" clicks
     function disableAllPreviousButtons() {
       const allButtons = root.querySelectorAll(".reschedule-link-button");
       allButtons.forEach(btn => {
@@ -124,13 +125,13 @@
 
         await appendMessage("ai", "Your calendar has been updated successfully.");
 
+        // Cleanup and Redirect
         shadowCalendarId = null;
         currentShadowCalendarId = null;
         smartReschedulingMode = false;
         setShadowCalendarId(null);
         setReschedulingMode(false);
         
-        // Redirect back to primary calendar view
         window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
 
       } catch (err) {
@@ -157,12 +158,13 @@
       } catch (err) {
         console.warn("Failed to discard shadow calendar", err);
       } finally {
+        // Cleanup and Redirect
         shadowCalendarId = null;
         currentShadowCalendarId = null;
         smartReschedulingMode = false;
         setShadowCalendarId(null);
         setReschedulingMode(false);
-        // Redirect back to primary calendar view
+        
         window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
       }
     }
@@ -258,7 +260,6 @@
         });
       }
 
-      // Restore rescheduling mode and UI state
       const wasReschedulingActive = getReschedulingMode();
       const savedShadowId = getShadowCalendarId();
       
@@ -364,6 +365,7 @@
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           };
           
+          // Ensure we continue using the shadow calendar if set
           if (currentShadowCalendarId) requestBody.shadowCalendarId = currentShadowCalendarId;
 
           const response = await fetch(API_URL + "/api/gemini", {
@@ -375,7 +377,6 @@
           if (!response.ok) throw new Error(`Server error: ${response.status}`);
           const data = await response.json();
 
-          // Refresh logic: Only when a NEW shadow session is initialized
           let shouldTriggerRefresh = false;
 
           if (data.action === "init_shadow_session") {
@@ -404,7 +405,7 @@
             lastAiBubble.textContent = aiMessage;
             lastAiBubble.style.color = "inherit";
 
-            // Button Logic:
+            // If we are in mode AND an action occurred (update/create/delete), refresh the buttons
             const isModification = ["update", "create", "delete", "init_shadow_session"].includes(data.action);
             
             if (smartReschedulingMode && isModification) {
@@ -443,6 +444,12 @@
     if (clearChatButton) {
       clearChatButton.addEventListener("click", async (e) => {
         e.preventDefault();
+
+        // **CRITICAL FIX**: Call exit BEFORE clearing state to ensure backend cleanup
+        if (shadowCalendarId) {
+            await exitReschedulingMode();
+        }
+
         chatMessages.querySelectorAll(".message").forEach((msg) => msg.remove());
         await saveMessages([]);
         window.postMessage({ type: "CLEAR_MESSAGES" }, "*");
