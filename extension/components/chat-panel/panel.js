@@ -397,16 +397,14 @@
           const gcaAccessToken = gcaTokenResp.access_token;
 
           // Build the request payload for the backend
-          // Besides the user input and conversation history, we also send the
-          // user's timezone so Gemini can reason about dates correctly
           const requestBody = {
             input: msg,
             history: history,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           };
 
-          // If a shadow calendar has been initialized earlier in this session,
-          // include its ID so the backend can keep using the same calendar
+          // If a shadow calendar has been initialized earlier in this session, include its ID so
+          // the backend can keep using the same calendar
           if (currentShadowCalendarId) {
             requestBody.shadowCalendarId = currentShadowCalendarId;
           }
@@ -425,16 +423,14 @@
             throw new Error(`Server error: ${response.status}`);
           }
 
-          // Process API Response
+          // Process API response
           const data = await response.json();
+          console.log("Panel: /api/gemini response:", data);
 
-          console.log("PANEL: /api/gemini response =", data);
-
-          // If the backend has just initialized a new shadow session, remember
-          // the shadow calendar ID so we can send it with future requests
+          // If the backend has just initialized a new shadow session, remember the shadow calendar
+          // ID so we can send it with future requests
           if (data.action === "init_shadow_session") {
-            const shadowId =
-              data.shadowCalendarId || data.calendarResult?.shadowCalendarId;
+            const shadowId = data.shadowCalendarId || data.calendarResult?.shadowCalendarId;
 
             if (shadowId) {
               currentShadowCalendarId = shadowId;
@@ -552,8 +548,8 @@
     // Boot up the chat (load history or welcome message)
     initializeChat();
 
-    // Add event containment logic for the shadow root to prevent event leakage.
-    // This stops events inside the chat from bubbling up to the host page (Google Calendar).
+    // Add event containment logic for the shadow root to prevent event leakage
+    // This stops events inside the chat from bubbling up to the host page (Google Calendar)
     if (root instanceof ShadowRoot) {
       const containmentEvents = [
         "keydown",
