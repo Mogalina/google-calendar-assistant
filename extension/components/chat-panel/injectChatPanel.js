@@ -344,14 +344,13 @@
   }
 
   /**
-   * Handles the event when a new shadow calendar was created
-   * Refreshes the current Google Calendar page so the new calendar appears in the UI
+   * Handles the event when a new shadow calendar was created.
+   * Refreshes the current Google Calendar page so the new calendar appears in the UI.
    *
-   * @param {Object} payload - Optional data sent from panel.js 
+   * @param {Object} payload - Optional data sent from panel.js file.
    */
   function handleCalendarCreated(payload) {
     console.log("InjectChatPanel: shadow calendar created", payload);
     window.location.reload();
   }
-  
 })();

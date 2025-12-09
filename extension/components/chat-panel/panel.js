@@ -432,8 +432,7 @@
               },
               "*"
             );
-            // Helpful debug log to verify the response structure
-            console.log("PANEL: /api/gemini response = ", data);
+            console.log("Panel: /api/gemini response:", data);
           }
 
           // Replace pulsing bubble with final assistant text response
