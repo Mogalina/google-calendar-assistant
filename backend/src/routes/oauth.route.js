@@ -18,9 +18,7 @@ const oauth2Client = new google.auth.OAuth2(
  * Required scopes for calendar access.
  * Scopes define what permissions your app is requesting from the user.
  */
-const SCOPES = [
-  'https://www.googleapis.com/auth/calendar'
-];
+const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
 /**
  * Initiates the OAuth2 flow by redirecting to Google's authorization page.
@@ -28,12 +26,12 @@ const SCOPES = [
 router.get("/authorize", (_req, res) => {
   // Build Google OAuth URL with required parameters
   const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
+    access_type: "offline",
     scope: SCOPES,
-    prompt: 'consent',
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI
+    prompt: "consent",
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
   });
-  
+
   res.json({ authUrl });
 });
 
@@ -50,17 +48,16 @@ router.get("/callback", async (req, res) => {
   try {
     // Exchange authorization code for access and refresh tokens
     const { tokens } = await oauth2Client.getToken({
-        code,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI
+      code,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
     });
-    
+
     // Respond with the tokens to the client
     res.json({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
-      expiry_date: tokens.expiry_date
+      expiry_date: tokens.expiry_date,
     });
-    
   } catch (error) {
     console.error("Error exchanging code for tokens:", error);
     return sendErrorResponse(res, 500, "Failed to obtain access token");
@@ -73,7 +70,7 @@ router.get("/callback", async (req, res) => {
  */
 router.post("/refresh", async (req, res) => {
   const { refresh_token } = req.body;
-  
+
   if (!refresh_token) {
     return sendErrorResponse(res, 500, "Refresh token required");
   }
@@ -84,13 +81,12 @@ router.post("/refresh", async (req, res) => {
 
     // Request a new access token
     const { credentials } = await oauth2Client.refreshAccessToken();
-    
+
     // Return the new access token and its expiration time
     res.json({
       access_token: credentials.access_token,
-      expiry_date: credentials.expiry_date
+      expiry_date: credentials.expiry_date,
     });
-    
   } catch (error) {
     console.error("Error refreshing token:", error);
     return sendErrorResponse(res, 500, "Failed to refresh access token");
