@@ -418,11 +418,7 @@
               "Content-Type": "application/json",
               Authorization: `Bearer ${gcaAccessToken}`,
             },
-            body: JSON.stringify({
-              input: msg,
-              history: history,
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
           if (!response.ok) {
