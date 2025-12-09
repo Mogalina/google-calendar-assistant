@@ -143,6 +143,9 @@
     async function exitReschedulingMode(refresh = true) {
       suggestionTag.style.display = "none";
       disableAllPreviousButtons();
+      
+      const wasActiveSession = !!shadowCalendarId;
+
       try {
         if (shadowCalendarId) {
           const gcaTokenResp = await requestGcaAccessToken();
@@ -164,7 +167,8 @@
         setShadowCalendarId(null);
         setReschedulingMode(false);
         
-        if (refresh) {
+        // Only trigger the context switch (refresh) if we actually had a shadow calendar active
+        if (wasActiveSession && refresh) {
           window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
         }
       }
@@ -360,13 +364,20 @@
           if (gcaTokenResp.status !== "success") throw new Error("Auth failed");
 
           const gcaAccessToken = gcaTokenResp.access_token;
+          
+          // If mode is active, prepend a system tag to the input so the backend knows
+          // to use the rescheduling logic/tools even if the user just says "Tuesday".
+          let backendInput = msg;
+          if (smartReschedulingMode) {
+            backendInput = `[Smart Reschedule Mode Active] ${msg}`;
+          }
+
           const requestBody = {
-            input: msg,
+            input: backendInput, // Send modified input
             history: history,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           };
           
-          // Ensure we continue using the shadow calendar if set
           if (currentShadowCalendarId) requestBody.shadowCalendarId = currentShadowCalendarId;
 
           const response = await fetch(API_URL + "/api/gemini", {
@@ -446,7 +457,7 @@
       clearChatButton.addEventListener("click", async (e) => {
         e.preventDefault();
 
-        // **CRITICAL FIX**: Call exit BEFORE clearing state to ensure backend cleanup
+        // Call exit BEFORE clearing state to ensure backend cleanup
         if (shadowCalendarId) {
             await exitReschedulingMode();
         }
@@ -481,13 +492,18 @@
       root.addEventListener("click", (e) => {
         if (!document.getElementById("mode-dropdown").contains(e.target)) dropdownMenu.style.display = "none";
       });
-      smartSuggestionBtn.addEventListener("click", () => {
+      
+      smartSuggestionBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         suggestionTag.style.display = "flex";
         dropdownMenu.style.display = "none";
         smartReschedulingMode = true;
         setReschedulingMode(true);
         console.log("Smart rescheduling mode ON");
       });
+      
       removeSuggestion.addEventListener("click", () => {
         suggestionTag.style.display = "none";
         smartReschedulingMode = false;

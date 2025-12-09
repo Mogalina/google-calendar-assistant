@@ -14,15 +14,12 @@ import {
 
 dotenv.config();
 
-// Initializes the Gemini client
 const client = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-// Hold the model configuration loaded from file
 let geminiConfig;
 
-// Attempt to read and parse the external Gemini configuration file
 try {
   const configFile = fs.readFileSync("src/config/gemini.yaml", "utf8");
   geminiConfig = yaml.load(configFile);
@@ -30,25 +27,33 @@ try {
 } catch (e) {
   console.error("Failed to load or parse `gemini.yaml` file:", e);
 
-  // Set a fallback configuration if file reading fails
   geminiConfig = {
     model: "gemini-2.5-flash-lite",
     config: {
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
-      Your sole purpose is to analyze the user's existing calendar events and their requests 
-      to suggest the most efficient, conflict-free, and productive schedule changes.`,
+      
+      ### MODES OF OPERATION:
+      
+      1. **NORMAL MODE** (Default):
+         - You can create, update, or delete events on the user's 'primary' calendar directly if requested.
+      
+      2. **SMART RESCHEDULE MODE** (Triggered by input starting with "[Smart Reschedule Mode Active]"):
+         - **STRICT PROHIBITION:** You are FORBIDDEN from using 'create', 'update', or 'delete' tools on the 'primary' calendar ID.
+         - **INITIALIZATION:** If the user request implies a change (create/move/delete) and you are NOT currently in a shadow session (i.e., you haven't been passed a specific shadowCalendarId), you MUST FIRST call the 'init_shadow_session' tool.
+         - **TIME RANGE:** If the user does not specify a time range (e.g., "Walk the dog"), assume a default range of **Today + Next 7 Days** for the shadow session.
+         - **EXECUTION:** Only AFTER the shadow session is initialized and you receive the 'shadowCalendarId', proceed to apply the user's changes to THAT shadow calendar.
+      
+      Your goal is to suggest the most efficient, conflict-free, and productive schedule changes.`,
       temperature: 0.7,
       maxOutputTokens: 800
     }
   };
 }
 
-// Ensure the tools array exists in the configuration
 if (!geminiConfig.tools) {
   geminiConfig.tools = [];
 }
 
-// Add the `init_shadow_session` tool
 geminiConfig.tools.push({
   functionDeclarations: [
     {
@@ -72,25 +77,17 @@ geminiConfig.tools.push({
   ]
 });
 
-/**
- * Helper to enforce shadow calendar context.
- * If we are in a shadow session (targetCalendarId is not primary),
- * we override 'primary' or missing calendarId with the shadow ID.
- */
 function resolveCalendarId(params, targetCalendarId) {
   if (!targetCalendarId || targetCalendarId === "primary") {
     return params.calendarId || "primary";
   }
-  // If the tool execution tries to use 'primary' or nothing, force the shadow ID
   if (!params.calendarId || params.calendarId === "primary") {
+    console.log(`[GeminiService] Enforcing shadow context: ${targetCalendarId} (was ${params.calendarId})`);
     return targetCalendarId;
   }
   return params.calendarId;
 }
 
-/**
- * Creates a new calendar event using the provided parameters.
- */
 async function handleCreate(accessToken, params, userTimeZone, targetCalendarId = "primary") {
   if (!params.summary || params.summary.trim() === "") {
     params.summary = "Untitled Event";
@@ -115,9 +112,6 @@ async function handleCreate(accessToken, params, userTimeZone, targetCalendarId 
   });
 }
 
-/**
- * Lists upcoming events and appends a formatted list to the Gemini response.
- */
 async function handleList(accessToken, params, geminiResponse, targetCalendarId = "primary") {
   const calendarId = resolveCalendarId(params, targetCalendarId);
   console.log(`[GeminiService] Listing events for calendar: ${calendarId}`);
@@ -142,9 +136,6 @@ async function handleList(accessToken, params, geminiResponse, targetCalendarId 
   return calendarResult;
 }
 
-/**
- * Searches events based on a query and appends results to the Gemini response.
- */
 async function handleSearch(accessToken, params, geminiResponse, targetCalendarId = "primary") {
   if (!params.query) {
     throw new Error("Search query is required");
@@ -170,10 +161,6 @@ async function handleSearch(accessToken, params, geminiResponse, targetCalendarI
   return calendarResult;
 }
 
-/**
- * Updates an existing calendar event.
- * Includes fallback logic to map Original IDs to Shadow IDs if a 404 occurs.
- */
 async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for updates");
@@ -186,17 +173,13 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
   console.log(`[GeminiService] Updating event ${eventId} in calendar: ${calendarId}`);
 
   try {
-    // Attempt to fetch the event directly
     currentEvent = await getEvent(accessToken, eventId, calendarId);
   } catch (error) {
-    // Check if error is 404 (Not Found) and we are working on a shadow calendar
-    // This happens when LLM uses the Primary Event ID to update the Shadow Calendar
     const isNotFound = error.code === 404 || error.response?.status === 404;
     
     if (isNotFound && calendarId !== "primary") {
       console.log(`[GeminiService] Event ${eventId} not found in shadow ${calendarId}. Checking lineage...`);
       
-      // Fetch all events in the shadow calendar to find a match by originalEventId
       const shadowEvents = await listEvents(accessToken, { calendarId });
       const match = shadowEvents.find(
         (e) => e.extendedProperties?.private?.originalEventId === eventId
@@ -205,17 +188,16 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
       if (match) {
         console.log(`[GeminiService] Mapped original ID ${eventId} to shadow ID ${match.id}`);
         eventId = match.id;
-        currentEvent = match; // We already have the event object from the list
+        currentEvent = match;
       } else {
         console.error(`[GeminiService] No matching shadow event found for ID ${eventId}`);
-        throw error; // Propagate if we really can't find it
+        throw error; 
       }
     } else {
       throw error;
     }
   }
 
-  // Merge updates with existing event data
   const updateData = {
     summary: params.summary ?? currentEvent.summary,
     start: params.start ?? currentEvent.start,
@@ -223,6 +205,7 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
     description: params.description ?? currentEvent.description,
     location: params.location ?? currentEvent.location,
     attendees: params.attendees ?? currentEvent.attendees,
+    extendedProperties: currentEvent.extendedProperties,
   };
 
   if (params.start && updateData.start?.dateTime && !updateData.start.timeZone) {
@@ -235,21 +218,40 @@ async function handleUpdate(accessToken, params, userTimeZone, targetCalendarId 
   return await updateEvent(accessToken, eventId, calendarId, updateData);
 }
 
-/**
- * Deletes an existing calendar event.
- */
 async function handleDelete(accessToken, params, targetCalendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for deletion");
   }
   const calendarId = resolveCalendarId(params, targetCalendarId);
-  console.log(`[GeminiService] Deleting event ${params.eventId} in calendar: ${calendarId}`);
-  return await deleteEvent(accessToken, params.eventId, calendarId);
+  let eventId = params.eventId;
+
+  console.log(`[GeminiService] Deleting event ${eventId} in calendar: ${calendarId}`);
+
+  try {
+    return await deleteEvent(accessToken, eventId, calendarId);
+  } catch (error) {
+    const isNotFound = error.code === 404 || error.response?.status === 404;
+    
+    if (isNotFound && calendarId !== "primary") {
+      console.log(`[GeminiService] Event ${eventId} not found in shadow ${calendarId} for deletion. Checking lineage...`);
+      
+      const shadowEvents = await listEvents(accessToken, { calendarId });
+      const match = shadowEvents.find(
+        (e) => e.extendedProperties?.private?.originalEventId === eventId
+      );
+
+      if (match) {
+        console.log(`[GeminiService] Mapped original ID ${eventId} to shadow ID ${match.id} for deletion`);
+        return await deleteEvent(accessToken, match.id, calendarId);
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 }
 
-/**
- * Gathers calendar context by executing multiple search/list operations.
- */
 async function handleGatherContext(accessToken, params, targetCalendarId = "primary") {
   const operations = params.operations || [];
   const contextResults = [];
@@ -296,9 +298,77 @@ async function handleGatherContext(accessToken, params, targetCalendarId = "prim
   return contextResults.join("\n\n");
 }
 
-/**
- * Sends a message to Gemini, continuing a conversation based on the provided history.
- */
+function findPotentialMatches(events, userRequest) {
+  const matches = [];
+  const lower = userRequest.toLowerCase();
+  
+  const keyPhrases = extractKeyPhrases(lower);
+  
+  for (const event of events) {
+    if (!event.summary) continue;
+    const eventLower = event.summary.toLowerCase();
+    
+    for (const phrase of keyPhrases) {
+      const phraseLower = phrase.toLowerCase();
+      
+      if (eventLower.includes(phraseLower) || phraseLower.includes(eventLower)) {
+        matches.push({ 
+          event, 
+          matchedPhrase: phrase, 
+          score: 100,
+          reason: `Event summary "${event.summary}" matches phrase "${phrase}"`
+        });
+        break;
+      }
+      
+      const phraseWords = phraseLower.split(/\s+/).filter(w => w.length > 2);
+      const eventWords = eventLower.split(/\s+/).filter(w => w.length > 2);
+      
+      let matchCount = 0;
+      for (const pw of phraseWords) {
+        for (const ew of eventWords) {
+          if (ew.includes(pw) || pw.includes(ew)) {
+            matchCount++;
+            break;
+          }
+        }
+      }
+      
+      if (matchCount >= Math.min(2, phraseWords.length)) {
+        matches.push({ 
+          event, 
+          matchedPhrase: phrase, 
+          score: (matchCount / phraseWords.length) * 80,
+          reason: `${matchCount} matching words between "${phrase}" and "${event.summary}"`
+        });
+        break;
+      }
+    }
+  }
+  
+  return matches.sort((a, b) => b.score - a.score);
+}
+
+function extractKeyPhrases(text) {
+  const phrases = [];
+
+  const want = text.match(/(?:want to|need to|have to|going to)\s+([^.!?,]+?)(?:\s+in|\s+at|\s+on|\s+for|$)/);
+  if (want) phrases.push(want[1].trim());
+  
+  const activity = text.match(/\b([a-z\s]{3,}?)\s+(?:in the|at|on|for)/);
+  if (activity) phrases.push(activity[1].trim());
+  
+  const words = text.split(/\s+/);
+  const stopWords = ['i', 'want', 'to', 'the', 'a', 'an', 'in', 'at', 'on', 'for', 'tomorrow', 'today', 'morning', 'afternoon', 'evening', 'night'];
+  const meaningfulWords = words.filter(w => w.length > 3 && !stopWords.includes(w));
+  
+  if (meaningfulWords.length > 0) {
+    phrases.push(meaningfulWords.join(' '));
+  }
+  
+  return [...new Set(phrases)].filter(p => p.length > 0);
+}
+
 export async function continueChat(
   input, 
   history = [], 
@@ -319,7 +389,6 @@ export async function continueChat(
   try {
     const currentDateTime = new Date().toISOString();
     
-    // Inject system context if we are in shadow mode
     let systemPreamble = "";
     if (calendarId !== "primary") {
       systemPreamble = `SYSTEM NOTICE: You are currently working on a Shadow Calendar (ID: ${calendarId}). All 'create', 'update', or 'delete' actions MUST be applied to this calendar ID. Do not use 'primary'.\n`;
@@ -358,7 +427,6 @@ export async function continueChat(
 
     let calendarResult = null;
     
-    // --- HANDLE GATHER CONTEXT ---
     if (action === "gather_context") {
       const contextData = await handleGatherContext(accessToken, params, calendarId);
       
@@ -413,39 +481,88 @@ export async function continueChat(
       };
     }
     
-    // --- HANDLE SHADOW SESSION INITIALIZATION ---
     if (action === "init_shadow_session") {
-      console.log("[GeminiService] Initializing shadow session...");
+      console.log("[GeminiService] Initializing shadow session with smart analysis...");
+      
       const { shadowCalendarId, events } = await initializeShadowSession(
         accessToken, 
         params.start, 
         params.end
       );
 
+      const potentialMatches = findPotentialMatches(events, input);
+      
+      console.log(`[GeminiService] Found ${potentialMatches.length} potential matches for: "${input}"`);
+      potentialMatches.forEach(m => {
+        console.log(`  - ${m.event.summary} (score: ${m.score}): ${m.reason}`);
+      });
+
       const eventList = events.map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+        const match = potentialMatches.find(m => m.event.id === event.id);
+        const marker = match ? ` ⭐ MATCH (${Math.round(match.score)}% - ${match.matchedPhrase})` : "";
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})${marker}`;
       }).join("\n");
 
-      // Loop to allow the model to perform multiple actions (updates) on the shadow calendar
-      let currentLoopInput = `
-        System Notification: Shadow session successfully initialized.
-        Shadow Calendar ID: ${shadowCalendarId}
-        
-        Events cloned into this session (Originals have been copied):
-        ${eventList}
-        
-        INSTRUCTIONS FOR RESCHEDULING:
-        1. Analyze the user's original request ("${input}") and the cloned events above.
-        2. If the user wants to reschedule/optimize, generate JSON actions to 'update' these events.
-        3. CRITICAL: For every 'update' action, you MUST explicitly specify "calendarId": "${shadowCalendarId}" in the parameters.
-        4. You can perform multiple updates sequentially. 
-        5. If no changes are needed, or when finished, return a response with action "none" summarizing the session.
-      `;
+      let intelligentHint = "";
+      if (potentialMatches.length > 0) {
+        const topMatch = potentialMatches[0];
+        intelligentHint = `
+    ⚠️  CRITICAL INSTRUCTION - READ CAREFULLY:
 
-      let finalResponseText = "Shadow calendar created.";
+    The user's request: "${input}"
+    Appears to match an EXISTING event: "${topMatch.event.summary}" (ID: ${topMatch.event.id})
+
+    REASONING: ${topMatch.reason}
+
+    YOU MUST:
+    1. Use the 'update' action with eventId: "${topMatch.event.id}"
+    2. DO NOT create a new event (this would create a duplicate!)
+    3. Extract the new time from user's request and update the event
+
+    EXAMPLE OF CORRECT RESPONSE:
+    {
+      "action": "update",
+      "parameters": {
+        "eventId": "${topMatch.event.id}",
+        "calendarId": "${shadowCalendarId}",
+        "start": { "dateTime": "..." },
+        "end": { "dateTime": "..." }
+      },
+      "response": "I've rescheduled ${topMatch.event.summary} as requested."
+    }
+    `;
+      } else {
+        intelligentHint = `
+    ANALYSIS: No existing events match the user's request.
+    This appears to be a request to CREATE a new event.
+    You may proceed with 'create' action if appropriate.
+    `;
+      }
+
+      let currentLoopInput = `
+    System Notification: Shadow session successfully initialized.
+    Shadow Calendar ID: ${shadowCalendarId}
+
+    Events cloned into this session:
+    ${eventList}
+    ${intelligentHint}
+
+    Original User Request: "${input}"
+
+    INSTRUCTIONS:
+    1. Analyze the user's request carefully
+    2. If an event is marked with ⭐ MATCH, UPDATE that event (don't create new)
+    3. Extract the desired time/date from the user's request
+    4. For ALL actions, specify "calendarId": "${shadowCalendarId}"
+    5. Respond with appropriate action
+
+    What is your action?
+    `;
+
+      let finalResponseText = "Analyzing your schedule...";
       let loopCount = 0;
-      const MAX_LOOPS = 8; 
+      const MAX_LOOPS = 8;
 
       while (loopCount < MAX_LOOPS) {
           const loopResult = await chat.sendMessage({ message: currentLoopInput });
@@ -453,32 +570,54 @@ export async function continueChat(
 
           let loopResponse;
           try {
-             const cleaned = loopText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
-             loopResponse = JSON.parse(cleaned);
+            const cleaned = loopText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+            loopResponse = JSON.parse(cleaned);
           } catch (e) {
-             finalResponseText = loopText;
-             break; 
+            finalResponseText = loopText;
+            break; 
           }
 
           if (loopResponse.action === "update") {
-              console.log("[GeminiService] Shadow Loop: executing update.");
-              // Force parameter override
+              console.log(`[GeminiService] Shadow Loop: updating event ${loopResponse.parameters.eventId}`);
               loopResponse.parameters.calendarId = shadowCalendarId;
-              
               try {
-                  await handleUpdate(accessToken, loopResponse.parameters, userTimeZone, shadowCalendarId);
-                  currentLoopInput = `System: Event ${loopResponse.parameters.eventId} updated successfully. Next action? (action: 'none' to finish)`;
-                  finalResponseText = loopResponse.response || "Updating schedule...";
+                  const updatedEvent = await handleUpdate(accessToken, loopResponse.parameters, userTimeZone, shadowCalendarId);
+                  currentLoopInput = `System: Successfully updated "${updatedEvent.summary}". Next action?`;
+                  finalResponseText = loopResponse.response || `I've rescheduled "${updatedEvent.summary}" as requested.`;
               } catch (err) {
                   console.error("Error in shadow update loop:", err);
-                  currentLoopInput = `System: Error updating event: ${err.message}. Try again or finish.`;
+                  currentLoopInput = `System: Error: ${err.message}. Try different approach or finish.`;
               }
               
+          } else if (loopResponse.action === "create") {
+              console.log("[GeminiService] Shadow Loop: creating new event");
+              loopResponse.parameters.calendarId = shadowCalendarId;
+              try {
+                  const newEvt = await handleCreate(accessToken, loopResponse.parameters, userTimeZone, shadowCalendarId);
+                  currentLoopInput = `System: Created "${newEvt.summary}". Next action?`;
+                  finalResponseText = loopResponse.response || `I've scheduled "${newEvt.summary}".`;
+              } catch (err) {
+                  console.error("Error in shadow create loop:", err);
+                  currentLoopInput = `System: Error: ${err.message}. Try again.`;
+              }
+
+          } else if (loopResponse.action === "delete") {
+              console.log("[GeminiService] Shadow Loop: deleting event");
+              loopResponse.parameters.calendarId = shadowCalendarId;
+              try {
+                  await handleDelete(accessToken, loopResponse.parameters, shadowCalendarId);
+                  currentLoopInput = `System: Event deleted. Next action?`;
+                  finalResponseText = loopResponse.response || "Event removed.";
+              } catch (err) {
+                  console.error("Error in shadow delete:", err);
+                  currentLoopInput = `System: Error: ${err.message}. Try again.`;
+              }
+
           } else if (loopResponse.action === "none") {
-              finalResponseText = loopResponse.response;
+              finalResponseText = loopResponse.response || finalResponseText;
               break;
           } else {
-              finalResponseText = loopResponse.response || "Session created.";
+              finalResponseText = loopResponse.response || "Schedule updated.";
               break;
           }
           loopCount++;
@@ -487,14 +626,10 @@ export async function continueChat(
       return {
         output: finalResponseText,
         action: "init_shadow_session",
-        calendarResult: {
-          shadowCalendarId,
-          events
-        },
+        calendarResult: { shadowCalendarId, events },
       };
     }
 
-    // --- HANDLE STANDARD ACTIONS ---
     switch (action) {
       case "create":
         calendarResult = await handleCreate(accessToken, params, userTimeZone, calendarId);
