@@ -140,7 +140,7 @@
       }
     }
 
-    async function exitReschedulingMode() {
+    async function exitReschedulingMode(refresh = true) {
       suggestionTag.style.display = "none";
       disableAllPreviousButtons();
       try {
@@ -158,14 +158,15 @@
       } catch (err) {
         console.warn("Failed to discard shadow calendar", err);
       } finally {
-        // Cleanup and Redirect
         shadowCalendarId = null;
         currentShadowCalendarId = null;
         smartReschedulingMode = false;
         setShadowCalendarId(null);
         setReschedulingMode(false);
         
-        window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
+        if (refresh) {
+          window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
+        }
       }
     }
 
@@ -491,7 +492,7 @@
         suggestionTag.style.display = "none";
         smartReschedulingMode = false;
         disableAllPreviousButtons();
-        exitReschedulingMode();
+        exitReschedulingMode(false);
       });
     }
 
