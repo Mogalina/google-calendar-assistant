@@ -7,6 +7,10 @@
   const API_URL = "http://localhost:8080";
   let currentShadowCalendarId = null;
 
+  // Tracks the current shadow calendar used during a smart reschedule session
+  let currentShadowCalendarId = null;
+
+  // Check if initialization has already happened to prevent attaching multiple listeners
   if (window.__panelInitialized) return;
   window.__panelInitialized = true;
 
