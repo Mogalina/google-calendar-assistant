@@ -5,7 +5,6 @@
 
 (async () => {
   const API_URL = "http://localhost:8080";
-  let currentShadowCalendarId = null;
 
   // Tracks the current shadow calendar used during a smart reschedule session
   let currentShadowCalendarId = null;
