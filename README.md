@@ -96,4 +96,4 @@ Google Calendar Assistant is a Chrome Extension designed to integrate a conversa
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
