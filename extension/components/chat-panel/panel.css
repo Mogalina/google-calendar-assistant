@@ -195,9 +195,39 @@
 }
 
 .message-time {
+  display: inline-flex;
+  align-items: center;
   font-size: 11px;
   color: #9ca3af;
   padding: 0 8px;
+  gap: 5px;
+}
+
+.reschedule-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1967d2;
+}
+
+.reschedule-link-button:hover {
+  text-decoration: underline;
+}
+
+.reschedule-actions-inline {
+  display: inline-flex;
+  align-items: center;
+}
+
+.reschedule-link-button.disabled {
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .dropdown {
@@ -364,6 +394,43 @@
 .chat-textarea::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 3px;
+}
+
+.microphone-button {
+  border: none;
+  outline: none;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+
+  width: 35px;
+  height: 35px;
+  border-radius: 27px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.microphone-button-icon {
+  width: 26px;
+  height: 26px;
+  opacity: 0.8;
+}
+
+.microphone-button:hover {
+  background-color: var(--bg-hover-gray);
+}
+
+.microphone-button.hidden {
+  display: none;
+}
+
+.microphone-button.recording {
+  border: 2px solid #4285f4; 
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.3);
+  background-color: rgba(66, 133, 244, 0.08);
 }
 
 .action-button {

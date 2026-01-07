@@ -12,17 +12,21 @@ import {
   initializeShadowSession
 } from "./calendarService.js";
 
+// Load environment variables
 dotenv.config();
 
-// Initializes the Gemini client
+// Initialize Gemini AI client using API key from environment
 const client = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY
 });
 
-// Hold the model configuration loaded from file
+// Gemini configuration loaded from YAML or fallback default
 let geminiConfig;
 
-// Attempt to read and parse the external Gemini configuration file
+/**
+ * Attempt to load Gemini configuration from YAML file.
+ * Falls back to default configuration if loading fails.
+ */
 try {
   const configFile = fs.readFileSync("src/config/gemini.yaml", "utf8");
   geminiConfig = yaml.load(configFile);
@@ -30,25 +34,33 @@ try {
 } catch (e) {
   console.error("Failed to load or parse `gemini.yaml` file:", e);
 
-  // Set a fallback configuration if file reading fails
+  // Default Gemini configuration used when YAML loading fails
   geminiConfig = {
     model: "gemini-2.5-flash-lite",
     config: {
       systemInstruction: `You are an **Expert Google Calendar Optimization Assistant**. 
-      Your sole purpose is to analyze the user's existing calendar events and their requests 
-      to suggest the most efficient, conflict-free, and productive schedule changes.`,
+      
+      ### MODES OF OPERATION:
+      
+      1. **NORMAL MODE** (Default):
+         - You can create, update, or delete events on the user's 'primary' calendar directly.
+      
+      2. **SMART RESCHEDULE MODE**:
+         - Uses a shadow calendar to simulate changes safely.
+      
+      Your goal is to suggest efficient, conflict-free schedule changes.`,
       temperature: 0.7,
       maxOutputTokens: 800
     }
   };
 }
 
-// Ensure the tools array exists in the configuration
+// Ensure Gemini tools array exists
 if (!geminiConfig.tools) {
   geminiConfig.tools = [];
 }
 
-// Add the `init_shadow_session` tool
+// Register Gemini tool for initializing a shadow calendar session
 geminiConfig.tools.push({
   functionDeclarations: [
     {
@@ -73,27 +85,58 @@ geminiConfig.tools.push({
 });
 
 /**
- * Creates a new calendar event using the provided parameters.
- * 
- * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
- * @param {Object} params - The event parameters.
- * @param {string} userTimeZone - The user's time zone.
- * @param {string} [calendarId="primary"] - The ID of the calendar to create the event in.
- * @returns {Promise<Object>} The created event object from Google Calendar API.
+ * Resolve which calendar ID should be used for an operation.
+ * Enforces shadow calendar usage when required.
+ *
+ * @param {Object} params - Gemini action parameters.
+ * @param {string} targetCalendarId - Enforced calendar context.
+ * @returns {string} - Final calendar ID to use.
  */
-async function handleCreate(accessToken, params, userTimeZone, calendarId = "primary") {
-  // Fallback for missing summary
+function resolveCalendarId(params, targetCalendarId) {
+  if (!targetCalendarId || targetCalendarId === "primary") {
+    return params.calendarId || "primary";
+  }
+  if (!params.calendarId || params.calendarId === "primary") {
+    console.log(
+      `[GeminiService] Enforcing shadow context: ${targetCalendarId} ` +
+      `(was ${params.calendarId})`
+    );
+    return targetCalendarId;
+  }
+  return params.calendarId;
+}
+
+/**
+ * Create a new calendar event.
+ *
+ * @param {string} accessToken - OAuth access token.
+ * @param {Object} params - Event creation parameters.
+ * @param {string} userTimeZone - User's timezone.
+ * @param {string} targetCalendarId - Calendar context.
+ * @returns {Promise<Object>} - Created event.
+ */
+async function handleCreate(
+  accessToken,
+  params,
+  userTimeZone,
+  targetCalendarId = "primary"
+) {
   if (!params.summary || params.summary.trim() === "") {
     params.summary = "Untitled Event";
   }
 
-  // Attach timezone to start and end if not present
   if (params.start?.dateTime && !params.start.timeZone) {
     params.start.timeZone = userTimeZone;
   }
   if (params.end?.dateTime && !params.end.timeZone) {
     params.end.timeZone = userTimeZone;
   }
+
+  const calendarId = resolveCalendarId(params, targetCalendarId);
+  console.log(
+    `[GeminiService] Creating event in calendar: ${calendarId}`,
+    params.summary
+  );
 
   return await createEvent(accessToken, calendarId, {
     summary: params.summary,
@@ -106,15 +149,23 @@ async function handleCreate(accessToken, params, userTimeZone, calendarId = "pri
 }
 
 /**
- * Lists upcoming events and appends a formatted list to the Gemini response.
- * 
- * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
- * @param {Object} params - The listing parameters.
- * @param {Object} geminiResponse - The Gemini response object to append results to.
- * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
- * @returns {Promise<Array>} The list of events retrieved from the calendar.
+ * List calendar events and append results to Gemini response.
+ *
+ * @param {string} accessToken - OAuth token.
+ * @param {Object} params - List parameters.
+ * @param {Object} geminiResponse - Mutable Gemini response object.
+ * @param {string} targetCalendarId - Calendar context.
+ * @returns {Promise<Array>} - Retrieved events.
  */
-async function handleList(accessToken, params, geminiResponse, calendarId = "primary") {
+async function handleList(
+  accessToken,
+  params,
+  geminiResponse,
+  targetCalendarId = "primary"
+) {
+  const calendarId = resolveCalendarId(params, targetCalendarId);
+  console.log(`[GeminiService] Listing events for calendar: ${calendarId}`);
+
   const calendarResult = await listEvents(accessToken, {
     calendarId: calendarId,
     maxResults: params.maxResults || 10,
@@ -125,8 +176,10 @@ async function handleList(accessToken, params, geminiResponse, calendarId = "pri
   if (calendarResult?.length > 0) {
     const eventList = calendarResult.map((event, i) => {
       const start = event.start?.dateTime || event.start?.date;
-      return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+      return `${i + 1}. ${event.summary} - ` +
+        `${new Date(start).toLocaleString()} (ID: ${event.id})`;
     }).join("\n");
+
     geminiResponse.response += `\n\n${eventList}`;
   } else {
     geminiResponse.response += "\n\nNo upcoming events found.";
@@ -136,18 +189,29 @@ async function handleList(accessToken, params, geminiResponse, calendarId = "pri
 }
 
 /**
- * Searches events based on a query and appends results to the Gemini response.
- * 
- * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
- * @param {Object} params - The search parameters.
- * @param {Object} geminiResponse - The Gemini response object to append results to.
- * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
- * @returns {Promise<Array>} The list of events matching the search query.
+ * Search calendar events by query string.
+ *
+ * @param {string} accessToken - OAuth token.
+ * @param {Object} params - Search parameters.
+ * @param {Object} geminiResponse - Mutable Gemini response.
+ * @param {string} targetCalendarId - Calendar context.
+ * @returns {Promise<Array>} - Matching events.
  */
-async function handleSearch(accessToken, params, geminiResponse, calendarId = "primary") {
+async function handleSearch(
+  accessToken,
+  params,
+  geminiResponse,
+  targetCalendarId = "primary"
+) {
   if (!params.query) {
     throw new Error("Search query is required");
   }
+
+  const calendarId = resolveCalendarId(params, targetCalendarId);
+  console.log(
+    `[GeminiService] Searching events in calendar: ${calendarId} ` +
+    `query: ${params.query}`
+  );
 
   const calendarResult = await searchEvents(accessToken, params.query, {
     calendarId: calendarId,
@@ -157,35 +221,82 @@ async function handleSearch(accessToken, params, geminiResponse, calendarId = "p
   if (calendarResult?.length > 0) {
     const eventList = calendarResult.map((event, i) => {
       const start = event.start?.dateTime || event.start?.date;
-      return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+      return `${i + 1}. ${event.summary} - ` +
+        `${new Date(start).toLocaleString()} (ID: ${event.id})`;
     }).join("\n");
-    geminiResponse.response += `\n\nFound ${calendarResult.length} events:\n${eventList}`;
+
+    geminiResponse.response +=
+      `\n\nFound ${calendarResult.length} events:\n${eventList}`;
   } else {
-    geminiResponse.response += `\n\nNo events found matching "${params.query}".`;
+    geminiResponse.response +=
+      `\n\nNo events found matching "${params.query}".`;
   }
 
   return calendarResult;
 }
 
 /**
- * Updates an existing calendar event.
- * Fetches the current event first and merges with updates to preserve existing data.
- * 
- * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
- * @param {object} params - The event update parameters.
- * @param {string} userTimeZone - The user's time zone.
- * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
- * @returns {Promise<object>} The updated event object.
+ * Update an existing calendar event.
+ * Handles shadow-calendar lineage mapping when needed.
+ *
+ * @param {string} accessToken - OAuth token.
+ * @param {Object} params - Update parameters.
+ * @param {string} userTimeZone - User timezone.
+ * @param {string} targetCalendarId - Calendar context.
+ * @returns {Promise<Object>} - Updated event.
  */
-async function handleUpdate(accessToken, params, userTimeZone, calendarId = "primary") {
+async function handleUpdate(
+  accessToken,
+  params,
+  userTimeZone,
+  targetCalendarId = "primary"
+) {
   if (!params.eventId) {
     throw new Error("Event identifier is required for updates");
   }
 
-  // Fetch the current event to preserve existing data
-  const currentEvent = await getEvent(accessToken, params.eventId, calendarId);
+  const calendarId = resolveCalendarId(params, targetCalendarId);
+  let eventId = params.eventId;
+  let currentEvent;
 
-  // Merge updates with existing event data
+  console.log(
+    `[GeminiService] Updating event ${eventId} in calendar: ${calendarId}`
+  );
+
+  /**
+   * Attempt to fetch event. If not found in shadow calendar,
+   * try to map original event ID to cloned shadow event.
+   */
+  try {
+    currentEvent = await getEvent(accessToken, eventId, calendarId);
+  } catch (error) {
+    const isNotFound = error.code === 404 || error.response?.status === 404;
+
+    if (isNotFound && calendarId !== "primary") {
+      console.log(
+        `[GeminiService] Event ${eventId} not found in shadow ${calendarId}.`
+      );
+
+      const shadowEvents = await listEvents(accessToken, { calendarId });
+      const match = shadowEvents.find(
+        (e) => e.extendedProperties?.private?.originalEventId === eventId
+      );
+
+      if (match) {
+        console.log(
+          `[GeminiService] Mapped original ID ${eventId} to shadow ID ${match.id}`
+        );
+        eventId = match.id;
+        currentEvent = match;
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
+
+  // Merge provided update parameters with existing event field
   const updateData = {
     summary: params.summary ?? currentEvent.summary,
     start: params.start ?? currentEvent.start,
@@ -193,9 +304,9 @@ async function handleUpdate(accessToken, params, userTimeZone, calendarId = "pri
     description: params.description ?? currentEvent.description,
     location: params.location ?? currentEvent.location,
     attendees: params.attendees ?? currentEvent.attendees,
+    extendedProperties: currentEvent.extendedProperties,
   };
 
-  // Attach timezone to start and end if being updated and missing timezone
   if (params.start && updateData.start?.dateTime && !updateData.start.timeZone) {
     updateData.start.timeZone = userTimeZone;
   }
@@ -203,35 +314,77 @@ async function handleUpdate(accessToken, params, userTimeZone, calendarId = "pri
     updateData.end.timeZone = userTimeZone;
   }
 
-  return await updateEvent(accessToken, params.eventId, calendarId, updateData);
+  return await updateEvent(accessToken, eventId, calendarId, updateData);
 }
 
 /**
- * Deletes an existing calendar event.
- * 
- * @param {string} accessToken - The OAuth2 access token for authentication.
- * @param {object} params - The parameters for deletion, must include `eventId`.
- * @param {string} [calendarId="primary"] - The calendar identifier (default is "primary").
- * @returns {Promise<any>} The result of the delete operation.
+ * Delete a calendar event.
+ * Supports lineage resolution when deleting events from a shadow calendar.
+ *
+ * @param {string} accessToken - OAuth access token.
+ * @param {Object} params - Deletion parameters (must include eventId).
+ * @param {string} targetCalendarId - Calendar context (primary or shadow).
+ * @returns {Promise<Object>} - Result of deletion.
  */
-async function handleDelete(accessToken, params, calendarId = "primary") {
+async function handleDelete(accessToken, params, targetCalendarId = "primary") {
   if (!params.eventId) {
     throw new Error("Event identifier is required for deletion");
   }
 
-  return await deleteEvent(accessToken, params.eventId, calendarId);
+  const calendarId = resolveCalendarId(params, targetCalendarId);
+  let eventId = params.eventId;
+
+  console.log(
+    `[GeminiService] Deleting event ${eventId} in calendar: ${calendarId}`
+  );
+
+  try {
+    return await deleteEvent(accessToken, eventId, calendarId);
+  } catch (error) {
+    const isNotFound = error.code === 404 || error.response?.status === 404;
+
+    // If the event does not exist in a shadow calendar, attempt to locate the 
+    // cloned version using lineage metadata
+    if (isNotFound && calendarId !== "primary") {
+      console.log(
+        `[GeminiService] Event ${eventId} not found in shadow ${calendarId}. ` +
+        `Checking lineage...`
+      );
+
+      const shadowEvents = await listEvents(accessToken, { calendarId });
+      const match = shadowEvents.find(
+        (e) => e.extendedProperties?.private?.originalEventId === eventId
+      );
+
+      if (match) {
+        console.log(
+          `[GeminiService] Mapped original ID ${eventId} to shadow ID ` +
+          `${match.id} for deletion`
+        );
+        return await deleteEvent(accessToken, match.id, calendarId);
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 }
 
 /**
- * Gathers calendar context by executing multiple search/list operations.
- * Returns formatted context string to be sent back to Gemini.
- * 
- * @param {string} accessToken - The OAuth2 access token for Google Calendar API.
- * @param {Object} params - The parameters containing operations to perform.
- * @param {string} [calendarId="primary"] - The calendar identifier (defaults to "primary").
- * @returns {Promise<string>} The formatted context results.
+ * Perform multiple read-only calendar operations to gather contextual data.
+ * Used by Gemini before deciding on a final action.
+ *
+ * @param {string} accessToken - OAuth access token.
+ * @param {Object} params - Context parameters (list/search operations).
+ * @param {string} targetCalendarId - Calendar context.
+ * @returns {Promise<string>} - Aggregated context summary.
  */
-async function handleGatherContext(accessToken, params, calendarId = "primary") {
+async function handleGatherContext(
+  accessToken,
+  params,
+  targetCalendarId = "primary"
+) {
   const operations = params.operations || [];
   const contextResults = [];
 
@@ -239,41 +392,55 @@ async function handleGatherContext(accessToken, params, calendarId = "primary") 
     try {
       if (op.type === "list") {
         const events = await listEvents(accessToken, {
-          calendarId: calendarId,
+          calendarId: resolveCalendarId(params, targetCalendarId),
           maxResults: op.maxResults || 10,
           start: op.start,
           end: op.end
         });
 
         if (events.length > 0) {
-          const eventList = events.map((event, i) => {
+          const eventList = events.map((event) => {
             const start = event.start?.dateTime || event.start?.date;
-            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+            return `  - ${event.summary} at ` +
+              `${new Date(start).toLocaleString()} (ID: ${event.id})`;
           }).join("\n");
-          contextResults.push(`List results (${events.length} events):\n${eventList}`);
+
+          contextResults.push(
+            `List results (${events.length} events):\n${eventList}`
+          );
         } else {
-          contextResults.push("List results: No events found in the specified time range.");
+          contextResults.push(
+            "List results: No events found in the specified time range."
+          );
         }
 
       } else if (op.type === "search") {
         const events = await searchEvents(accessToken, op.query, {
-          calendarId: calendarId,
+          calendarId: resolveCalendarId(params, targetCalendarId),
           maxResults: op.maxResults || 10
         });
 
         if (events.length > 0) {
-          const eventList = events.map((event, i) => {
+          const eventList = events.map((event) => {
             const start = event.start?.dateTime || event.start?.date;
-            return `  - ${event.summary} at ${new Date(start).toLocaleString()} (ID: ${event.id})`;
+            return `  - ${event.summary} at ` +
+              `${new Date(start).toLocaleString()} (ID: ${event.id})`;
           }).join("\n");
-          contextResults.push(`Search results for "${op.query}" (${events.length} events):\n${eventList}`);
+
+          contextResults.push(
+            `Search results for "${op.query}" (${events.length} events):\n` +
+            `${eventList}`
+          );
         } else {
-          contextResults.push(`Search results for "${op.query}": No matching events found.`);
+          contextResults.push(
+            `Search results for "${op.query}": No matching events found.`
+          );
         }
       }
-
     } catch (error) {
-      contextResults.push(`Error in ${op.type} operation: ${error.message}`);
+      contextResults.push(
+        `Error in ${op.type} operation: ${error.message}`
+      );
     }
   }
 
@@ -281,14 +448,119 @@ async function handleGatherContext(accessToken, params, calendarId = "primary") 
 }
 
 /**
- * Sends a message to Gemini, continuing a conversation based on the provided history.
- * 
- * @param {string} input - The new user prompt.
- * @param {Array<object>} history - The full conversation history sent by the client.
- * @param {string|null} accessToken - Optional OAuth2 access token for calendar operations.
- * @param {string} userTimeZone - The user's current timezone.
- * @param {string} calendarId - The calendar identifier to operate on.
- * @returns {Promise<object>} The Gemini response including output text, action taken, and any calendar results.
+ * Identify potential calendar events that match a user's natural language request.
+ * Uses phrase extraction and fuzzy word matching.
+ *
+ * @param {Array<Object>} events - Calendar events.
+ * @param {string} userRequest - Original user input.
+ * @returns {Array<Object>} - Sorted match candidates with scores and reasons.
+ */
+function findPotentialMatches(events, userRequest) {
+  const matches = [];
+  const lower = userRequest.toLowerCase();
+
+  const keyPhrases = extractKeyPhrases(lower);
+
+  for (const event of events) {
+    if (!event.summary) continue;
+    const eventLower = event.summary.toLowerCase();
+
+    for (const phrase of keyPhrases) {
+      const phraseLower = phrase.toLowerCase();
+
+      // Strong match: phrase fully contains event title or vice versa
+      if (
+        eventLower.includes(phraseLower) ||
+        phraseLower.includes(eventLower)
+      ) {
+        matches.push({
+          event,
+          matchedPhrase: phrase,
+          score: 100,
+          reason:
+            `Event summary "${event.summary}" matches phrase "${phrase}"`
+        });
+        break;
+      }
+
+      // Partial word-level fuzzy matching
+      const phraseWords = phraseLower.split(/\s+/).filter(w => w.length > 2);
+      const eventWords = eventLower.split(/\s+/).filter(w => w.length > 2);
+
+      let matchCount = 0;
+      for (const pw of phraseWords) {
+        for (const ew of eventWords) {
+          if (ew.includes(pw) || pw.includes(ew)) {
+            matchCount++;
+            break;
+          }
+        }
+      }
+
+      if (matchCount >= Math.min(2, phraseWords.length)) {
+        matches.push({
+          event,
+          matchedPhrase: phrase,
+          score: (matchCount / phraseWords.length) * 80,
+          reason:
+            `${matchCount} matching words between "${phrase}" ` +
+            `and "${event.summary}"`
+        });
+        break;
+      }
+    }
+  }
+
+  return matches.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Extract meaningful action phrases from user input.
+ * Uses regex patterns and stop-word filtering.
+ *
+ * @param {string} text - Lowercase user request.
+ * @returns {Array<string>} - Unique key phrases.
+ */
+function extractKeyPhrases(text) {
+  const phrases = [];
+
+  const want = text.match(
+    /(?:want to|need to|have to|going to)\s+([^.!?,]+?)/ +
+    /(?:\s+in|\s+at|\s+on|\s+for|$)/
+  );
+  if (want) phrases.push(want[1].trim());
+
+  const activity = text.match(
+    /\b([a-z\s]{3,}?)\s+(?:in the|at|on|for)/
+  );
+  if (activity) phrases.push(activity[1].trim());
+
+  const words = text.split(/\s+/);
+  const stopWords = [
+    'i', 'want', 'to', 'the', 'a', 'an', 'in', 'at', 'on', 'for',
+    'tomorrow', 'today', 'morning', 'afternoon', 'evening', 'night'
+  ];
+
+  const meaningfulWords = words.filter(
+    w => w.length > 3 && !stopWords.includes(w)
+  );
+
+  if (meaningfulWords.length > 0) {
+    phrases.push(meaningfulWords.join(' '));
+  }
+
+  return [...new Set(phrases)].filter(p => p.length > 0);
+}
+
+/**
+ * Continues a conversational session with Gemini while managing calendar actions.
+ *
+ * @param {string} input - User natural language request
+ * @param {Array} history - Gemini chat history
+ * @param {string|null} accessToken - OAuth token for calendar access
+ * @param {string} userTimeZone - User timezone (default UTC)
+ * @param {string} calendarId - Target calendar ID (default primary)
+ * @returns {Promise<{output: string, action: string, calendarResult: any}>}
  */
 export async function continueChat(
   input, 
@@ -297,70 +569,74 @@ export async function continueChat(
   userTimeZone = "UTC",
   calendarId = "primary"
 ) {
-  // Require the `input` field to be present
+  // Validate user input early to avoid undefined Gemini behavior
   if (!input || typeof input !== "string") {
     throw new Error("Invalid user input for Gemini");
   }
 
-  // Decide which calendar we actually operate on
-  console.log("Gemini: Using calendar:", calendarId);
+  console.log(`[GeminiService] Processing input. Calendar context: ${calendarId}`);
 
-  // Require access token for calendar operations
+  // Gemini operations require an authenticated calendar context
   if (!accessToken) {
-    throw new Error(
-      "Access token required. Gemini operates only under calendar context."
-    );
+    throw new Error("Access token required. Gemini operates only under calendar context.");
   }
 
   try {
-    // Add current date or time context for calendar operations
+    // Used for temporal grounding in Gemini prompts
     const currentDateTime = new Date().toISOString();
+    
+    // Injects safety instructions when operating on non-primary calendars
+    let systemPreamble = "";
+    if (calendarId !== "primary") {
+      systemPreamble = `SYSTEM NOTICE: You are currently working on a Shadow Calendar (ID: ${calendarId}). All 'create', 'update', or 'delete' actions MUST be applied to this calendar ID. Do not use 'primary'.\n`;
+    }
+
+    // Full contextual payload sent to Gemini
     const contextualInput = `
+      ${systemPreamble}
       Current datetime: ${currentDateTime}
       User timezone: ${userTimeZone}
       User request: ${input}
     `;
 
-    // Create a new, temporary chat session for this specific request
+    // Initialize Gemini chat with preserved history
     const chat = client.chats.create({
       ...geminiConfig,
       history: history 
     });
 
-    // Send the new user message to the chat session
+    // Send initial message to Gemini
     const result = await chat.sendMessage({ message: contextualInput });
-    
-    // Extract text from Gemini response
     const text = result?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    // Defensive check against empty Gemini responses
     if (!text || text === "") {
       console.log(JSON.stringify(result, null, 2));
       throw new Error("Gemini returned empty response");
     }
 
-    // Parse Gemini JSON response and execute calendar actions
     let geminiResponse;
     try {
-      // Remove markdown code blocks if present
+      // Strip markdown code fences before JSON parsing
       const cleanedText = text.replace(/```json\n?/g, "").replace(/```\n?/g, "");
       geminiResponse = JSON.parse(cleanedText);
-
     } catch (parseError) {
-      // If parsing fails, treat as regular conversation
+      // Fallback: treat Gemini output as plain text
       console.warn("Failed to parse Gemini response as JSON, treating as text:", text);
       return { output: text, action: "none" };
     }
 
-    // Extract action and parameters
+    // Extract structured action and parameters
     const action = geminiResponse.action || "none";
     const params = geminiResponse.parameters || {};
 
     let calendarResult = null;
     
-    // Handle context gathering specially - it needs a follow-up
+    // Gemini requests additional context before deciding final action
     if (action === "gather_context") {
       const contextData = await handleGatherContext(accessToken, params, calendarId);
       
-      // Now make a second call to Gemini with the gathered context
+      // Follow-up prompt includes fetched calendar data
       const followUpInput = `
         Based on the user's request: "${input}"
         
@@ -368,6 +644,7 @@ export async function continueChat(
         ${contextData}
         
         Now, please provide the final action to take (create/update/delete/none) based on this context.
+        REMINDER: If modifying events, ensure you are acting on the correct calendar ID.
       `;
 
       const followUpResult = await chat.sendMessage({ message: followUpInput });
@@ -377,53 +654,28 @@ export async function continueChat(
         throw new Error("Gemini returned empty response in follow-up");
       }
 
-      // Parse the follow-up response
       const cleanedFollowUp = followUpText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
       const followUpResponse = JSON.parse(cleanedFollowUp);
       
       const finalAction = followUpResponse.action || "none";
       const finalParams = followUpResponse.parameters || {};
 
-      // Execute the final action
+      // Execute final calendar operation
       switch (finalAction) {
         case "create":
-          calendarResult = await handleCreate(
-            accessToken, 
-            finalParams, 
-            userTimeZone, 
-            finalParams.calendarId || calendarId
-          );
+          calendarResult = await handleCreate(accessToken, finalParams, userTimeZone, calendarId);
           break;
         case "update":
-          calendarResult = await handleUpdate(
-            accessToken, 
-            finalParams, 
-            userTimeZone, 
-            finalParams.calendarId || calendarId
-          );
+          calendarResult = await handleUpdate(accessToken, finalParams, userTimeZone, calendarId);
           break;
         case "delete":
-          calendarResult = await handleDelete(
-            accessToken, 
-            finalParams, 
-            finalParams.calendarId || calendarId
-          );
+          calendarResult = await handleDelete(accessToken, finalParams, calendarId);
           break;
         case "list":
-          calendarResult = await handleList(
-            accessToken, 
-            finalParams, 
-            followUpResponse,
-            finalParams.calendarId || calendarId
-          );
+          calendarResult = await handleList(accessToken, finalParams, followUpResponse, calendarId);
           break;
         case "search":
-          calendarResult = await handleSearch(
-            accessToken, 
-            finalParams, 
-            followUpResponse,
-            finalParams.calendarId || calendarId
-          );
+          calendarResult = await handleSearch(accessToken, finalParams, followUpResponse, calendarId);
           break;
         case "none":
         default:
@@ -437,98 +689,145 @@ export async function continueChat(
       };
     }
     
-    // Handle shadow session initialization
+    // Initializes a shadow calendar session for safe multi-step reasoning
     if (action === "init_shadow_session") {
-      // Execute the shadow session creation logic
+      console.log("[GeminiService] Initializing shadow session with smart analysis...");
+      
       const { shadowCalendarId, events } = await initializeShadowSession(
         accessToken, 
         params.start, 
         params.end
       );
 
-      // Create a summary of events cloned into the shadow session
+      // Heuristic matching between user request and existing events
+      const potentialMatches = findPotentialMatches(events, input);
+      
+      console.log(`[GeminiService] Found ${potentialMatches.length} potential matches for: "${input}"`);
+      potentialMatches.forEach(m => {
+        console.log(`  - ${m.event.summary} (score: ${m.score}): ${m.reason}`);
+      });
+
+      // Build readable event list for Gemini reasoning
       const eventList = events.map((event, i) => {
         const start = event.start?.dateTime || event.start?.date;
-        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()}`;
+        const match = potentialMatches.find(m => m.event.id === event.id);
+        const marker = match ? ` ⭐ MATCH (${Math.round(match.score)}% - ${match.matchedPhrase})` : "";
+        return `${i + 1}. ${event.summary} - ${new Date(start).toLocaleString()} (ID: ${event.id})${marker}`;
       }).join("\n");
 
-      const followUpInput = `
-        System Notification: Shadow session successfully initialized.
-        Shadow Calendar ID: ${shadowCalendarId}
-        
-        Events cloned into this session:
-        ${eventList}
-        
-        Please generate a response to the user confirming the session creation and briefly listing what was imported.
-      `;
+      let intelligentHint = "";
+      if (potentialMatches.length > 0) {
+        const topMatch = potentialMatches[0];
+        intelligentHint = `
+    ⚠️  CRITICAL INSTRUCTION - READ CAREFULLY:
 
-      // Feed context back to Gemini for the final response text
-      const followUpResult = await chat.sendMessage({ message: followUpInput });
-      const followUpText = followUpResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    The user's request: "${input}"
+    Appears to match an EXISTING event: "${topMatch.event.summary}" (ID: ${topMatch.event.id})
 
-      if (!followUpText) {
-        throw new Error("Gemini returned empty response");
+    REASONING: ${topMatch.reason}
+
+    YOU MUST:
+    1. Use the 'update' action with eventId: "${topMatch.event.id}"
+    2. DO NOT create a new event (this would create a duplicate!)
+    3. Extract the new time from user's request and update the event
+    `;
+      } else {
+        intelligentHint = `
+    ANALYSIS: No existing events match the user's request.
+    This appears to be a request to CREATE a new event.
+    `;
       }
 
-      let followUpResponse;
-      try {
-        const cleanedFollowUp = followUpText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
-        followUpResponse = JSON.parse(cleanedFollowUp);
-      } catch (parseError) {
-        // Fallback if Gemini replies with plain text
-        followUpResponse = { response: followUpText };
+      let currentLoopInput = `
+    System Notification: Shadow session successfully initialized.
+    Shadow Calendar ID: ${shadowCalendarId}
+
+    Events cloned into this session:
+    ${eventList}
+    ${intelligentHint}
+
+    Original User Request: "${input}"
+    `;
+
+      let finalResponseText = "Analyzing your schedule...";
+      let loopCount = 0;
+      const MAX_LOOPS = 8;
+
+      // Iterative reasoning loop until Gemini resolves the task
+      while (loopCount < MAX_LOOPS) {
+          const loopResult = await chat.sendMessage({ message: currentLoopInput });
+          const loopText = loopResult?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+          let loopResponse;
+          try {
+            const cleaned = loopText.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+            loopResponse = JSON.parse(cleaned);
+          } catch (e) {
+            finalResponseText = loopText;
+            break; 
+          }
+
+          if (loopResponse.action === "update") {
+              loopResponse.parameters.calendarId = shadowCalendarId;
+              const updatedEvent = await handleUpdate(
+                accessToken, 
+                loopResponse.parameters, 
+                userTimeZone, 
+                shadowCalendarId
+              );
+              currentLoopInput = `System: Successfully updated "${updatedEvent.summary}".`;
+              finalResponseText = loopResponse.response;
+              
+          } else if (loopResponse.action === "create") {
+              loopResponse.parameters.calendarId = shadowCalendarId;
+              const newEvt = await handleCreate(
+                accessToken, 
+                loopResponse.parameters, 
+                userTimeZone, 
+                shadowCalendarId
+              );
+              currentLoopInput = `System: Created "${newEvt.summary}".`;
+              finalResponseText = loopResponse.response;
+
+          } else if (loopResponse.action === "delete") {
+              loopResponse.parameters.calendarId = shadowCalendarId;
+              await handleDelete(accessToken, loopResponse.parameters, shadowCalendarId);
+              currentLoopInput = `System: Event deleted.`;
+              finalResponseText = loopResponse.response;
+
+          } else if (loopResponse.action === "none") {
+              finalResponseText = loopResponse.response;
+              break;
+          } else {
+              finalResponseText = loopResponse.response;
+              break;
+          }
+          loopCount++;
       }
 
       return {
-        output: followUpResponse.response,
+        output: finalResponseText,
         action: "init_shadow_session",
-        calendarResult: {
-          shadowCalendarId,
-          events
-        },
+        calendarResult: { shadowCalendarId, events },
       };
     }
 
-    // Execute single-phase actions as before
+    // Direct execution for simple one-shot actions
     switch (action) {
       case "create":
-        calendarResult = await handleCreate(
-          accessToken, 
-          params, 
-          userTimeZone, 
-          params.calendarId || calendarId
-        );
+        calendarResult = await handleCreate(accessToken, params, userTimeZone, calendarId);
         break;
       case "list":
-        calendarResult = await handleList(
-          accessToken, 
-          params, 
-          geminiResponse,
-          params.calendarId || calendarId
-        );
+        calendarResult = await handleList(accessToken, params, geminiResponse, calendarId);
         break;
       case "search":
-        calendarResult = await handleSearch(
-          accessToken, 
-          params, 
-          geminiResponse,
-          params.calendarId || calendarId
-        );
+        calendarResult = await handleSearch(accessToken, params, geminiResponse, calendarId);
         break;
       case "update":
-        calendarResult = await handleUpdate(
-          accessToken, 
-          params, 
-          userTimeZone,
-          params.calendarId || calendarId
-        );
+        calendarResult = await handleUpdate(accessToken, params, userTimeZone, calendarId);
         break;
       case "delete":
-        calendarResult = await handleDelete(
-          accessToken, 
-          params,
-          params.calendarId || calendarId
-        );
+        calendarResult = await handleDelete(accessToken, params, calendarId);
         break;
       case "none":
       default:

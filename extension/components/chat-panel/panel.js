@@ -1,33 +1,39 @@
 /**
  * @fileoverview
  * Initializes and manages the chat panel interface for the Google Calendar Assistant.
- * It dynamically connects to the backend API, handles messages between the webpage and the
- * extension content script, manages chat interactions, and controls user interface behaviors like
- * resizing, clearing, and closing the chat window.
+ * Handles chat interactions, voice input, smart rescheduling logic, and state management
+ * within a Shadow DOM environment.
  */
 
 (async () => {
-  // Hardcoded configuration
-  // The base endpoint for the backend server handling requests
   const API_URL = "http://localhost:8080";
 
-  // Check if initialization has already happened to prevent attaching multiple listeners
+  // Tracks the current shadow calendar used during a smart reschedule session.
+  // A shadow calendar is a temporary calendar used to propose changes before committing them.
+  let currentShadowCalendarId = null;
+
+  // Check if initialization has already happened to prevent attaching multiple listeners.
+  // This ensures the script is idempotent if injected multiple times.
   if (window.__panelInitialized) return;
   window.__panelInitialized = true;
 
   initializePanel();
 
   /**
-   * Main setup function that encapsulates all panel logic, event listeners, and DOM manipulation to
-   * ensure scope isolation.
+   * Main initialization function that encapsulates all panel logic and state.
    */
   function initializePanel() {
+    // LocalStorage keys for persisting user preferences and state
     const GCA_CONSENT_KEY = "gcaCalendarConsent";
+    const GCA_RESCHEDULE_MODE_KEY = "gcaReschedulingMode";
+    const GCA_SHADOW_CALENDAR_KEY = "gcaShadowCalendarId";
 
-    /**
-     * Retrieves the user's stored privacy consent decision.
-     *
-     * @returns {boolean} True if the user accepted calendar access, false otherwise.
+    // State variables for the current session
+    let smartReschedulingMode = false;
+    let shadowCalendarId = null;
+
+    /** 
+     * Retrieves privacy consent status. 
      */
     function getCalendarConsent() {
       try {
@@ -37,10 +43,8 @@
       }
     }
 
-    /**
-     * Saves the user's privacy consent decision.
-     *
-     * @param {boolean} value - The user's consent decision (true = accepted, false = declined).
+    /** 
+     * Saves privacy consent status. 
      */
     function setCalendarConsent(value) {
       try {
@@ -48,54 +52,225 @@
       } catch (e) {}
     }
 
+    /** 
+     * Checks if smart rescheduling mode is active. 
+     */
+    function getReschedulingMode() {
+      try {
+        return window.localStorage.getItem(GCA_RESCHEDULE_MODE_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    /** 
+     * Persists the rescheduling mode state.
+     */
+    function setReschedulingMode(value) {
+      try {
+        window.localStorage.setItem(
+          GCA_RESCHEDULE_MODE_KEY,
+          value ? "true" : "false"
+        );
+      } catch (e) {}
+    }
+
+    /** 
+     * Retrieves the ID of the active shadow calendar, if any. 
+     */
+    function getShadowCalendarId() {
+      try {
+        return window.localStorage.getItem(GCA_SHADOW_CALENDAR_KEY);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    /** 
+     * Saves or clears the shadow calendar ID.
+     */
+    function setShadowCalendarId(value) {
+      try {
+        if (value) window.localStorage.setItem(GCA_SHADOW_CALENDAR_KEY, value);
+        else window.localStorage.removeItem(GCA_SHADOW_CALENDAR_KEY);
+      } catch (e) {}
+    }
+
     /**
-     * Requests a valid access token for Google Calendar Assistant.
-     * The background script receives this and performs token retrieval or refresh.
-     *
-     * @returns {Promise<object>} The status and optional access token.
+     * Requests an OAuth access token from the parent window/extension context.
+     * 
+     * @returns {Promise<Object>} The token payload or error status.
      */
     function requestGcaAccessToken() {
       return new Promise((resolve) => {
         function listener(event) {
-          // Ensure security by checking the source
           if (event.source !== window) return;
-
-          // Filter for the specific response type
           if (event.data?.type !== "GCA_ACCESS_TOKEN_RESPONSE") return;
-
-          // Clean up listener to prevent memory leaks
           window.removeEventListener("message", listener);
           resolve(event.data.payload);
         }
-
         window.addEventListener("message", listener);
         window.postMessage({ type: "GCA_REQUEST_ACCESS_TOKEN" }, "*");
       });
     }
 
-    // Initiates the Google OAuth flow by notifying the main window
-    // This triggers a new tab opening in the background script
+    /** 
+     * Triggers the Google OAuth flow in the parent context. 
+     */
     function startGoogleAuthFlow() {
       window.postMessage({ type: "GCA_START_AUTH" }, "*");
     }
 
-    // Attempt to locate the root shadow
+    /**
+     * Disables "Apply/Ignore" buttons from previous messages to prevent actions on stale states.
+     */
+    function disableAllPreviousButtons() {
+      const allButtons = root.querySelectorAll(".reschedule-link-button");
+      allButtons.forEach((btn) => {
+        btn.disabled = true;
+        btn.classList.add("disabled");
+      });
+    }
+
+    /**
+     * Dynamically adds "Apply all" and "Ignore all" buttons to a specific chat bubble.
+     * Used when the AI proposes calendar changes.
+     * 
+     * @param {HTMLElement} bubbleEl - The message bubble element to attach buttons to.
+     */
+    function attachInlineRescheduleButtonsForBubble(bubbleEl) {
+      if (!bubbleEl) return;
+
+      const messageEl = bubbleEl.closest(".message");
+      if (!messageEl) return;
+      
+      const timeEl = messageEl.querySelector(".message-time");
+      if (!timeEl) return;
+
+      const old = messageEl.querySelector(".reschedule-actions-inline");
+      if (old) old.remove();
+
+      const actionsSpan = document.createElement("span");
+      actionsSpan.className = "reschedule-actions-inline";
+
+      const applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.textContent = "Apply all";
+      applyBtn.className = "reschedule-link-button";
+      applyBtn.addEventListener("click", commitShadowCalendar);
+
+      const ignoreBtn = document.createElement("button");
+      ignoreBtn.type = "button";
+      ignoreBtn.textContent = "Ignore all";
+      ignoreBtn.className = "reschedule-link-button";
+      ignoreBtn.addEventListener("click", exitReschedulingMode);
+
+      const separator = document.createTextNode(" | ");
+
+      actionsSpan.appendChild(applyBtn);
+      actionsSpan.appendChild(separator);
+      actionsSpan.appendChild(ignoreBtn);
+
+      timeEl.appendChild(actionsSpan);
+    }
+
+    /**
+     * Commits changes from the shadow calendar to the real calendar.
+     * Calls the backend API and cleans up session state on success.
+     */
+    async function commitShadowCalendar() {
+      if (!shadowCalendarId) return;
+      suggestionTag.style.display = "none";
+      disableAllPreviousButtons();
+
+      try {
+        const gcaTokenResp = await requestGcaAccessToken();
+        if (gcaTokenResp.status !== "success") throw new Error("No access token");
+        const token = gcaTokenResp.access_token;
+
+        const result = await fetch(API_URL + "/api/events/shadow/commit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ shadowCalendarId }),
+        });
+
+        if (!result.ok) throw new Error("Commit failed: " + result.status);
+
+        await appendMessage("ai", "Your calendar has been updated successfully.");
+
+        // Cleanup and Redirect
+        shadowCalendarId = null;
+        currentShadowCalendarId = null;
+        smartReschedulingMode = false;
+        setShadowCalendarId(null);
+        setReschedulingMode(false);
+
+        window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
+
+      } catch (err) {
+        console.error(err);
+        await appendMessage("ai", "Failed to apply changes. Please try again.");
+      }
+    }
+
+    /**
+     * Discards the shadow calendar and exits rescheduling mode.
+     * @param {boolean} refresh - Whether to trigger a context switch (refresh) on the host.
+     */
+    async function exitReschedulingMode(refresh = true) {
+      suggestionTag.style.display = "none";
+      disableAllPreviousButtons();
+
+      const wasActiveSession = !!shadowCalendarId;
+
+      try {
+        if (shadowCalendarId) {
+          const gcaTokenResp = await requestGcaAccessToken();
+          if (gcaTokenResp.status === "success") {
+            const token = gcaTokenResp.access_token;
+            await fetch(API_URL + "/api/events/shadow/discard", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ shadowCalendarId }),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to discard shadow calendar", err);
+      } finally {
+        shadowCalendarId = null;
+        currentShadowCalendarId = null;
+        smartReschedulingMode = false;
+        setShadowCalendarId(null);
+        setReschedulingMode(false);
+
+        // Only trigger the context switch if we actually had a shadow calendar active
+        if (wasActiveSession && refresh) {
+          window.postMessage({ type: "GCA_SWITCH_CONTEXT_PRIMARY" }, "*");
+        }
+      }
+    }
+
+    window.addEventListener("beforeunload", () => {});
+
+    // Locate the ShadowRoot to access isolated DOM elements
     let root = document.currentScript?.getRootNode();
     if (!(root instanceof ShadowRoot)) {
-      // Try to find the host element explicitly
       const host = document.querySelector("#assistant-chat-panel");
       root = host?.shadowRoot || host?._shadowRoot;
     }
+    if (!(root instanceof ShadowRoot)) throw new Error("Cannot initialize chat panel");
 
-    // If no shadow root is found, initialization fails because we cannot access UI elements
-    if (!(root instanceof ShadowRoot)) {
-      throw new Error("Cannot initialize chat panel");
-    }
-
-    // Utility function for quick element selection inside the shadow root
+    // Helper to get element by ID from ShadowRoot
     const get = (id) => root.getElementById(id);
 
-    // Retrieve chat panel interface elements
+    // UI Element References
     const chatInput = get("chat-input");
     const chatMessages = get("chat-messages");
     const chatForm = get("chat-form");
@@ -112,69 +287,48 @@
     const consentOverlay = get("gca-consent-overlay");
     const consentAccept = get("gca-consent-accept");
     const consentDecline = get("gca-consent-decline");
+    const microphoneButton = get("microphone-button");
+    const microphoneTooltip = get("mic-tooltip-text");
 
-    /**
-     * Initializes and manages the privacy consent modal for the extension.
-     *
-     * Displays the consent dialog when no previous decision exists in localStorage, and attaches 
-     * event listeners to handle the user's choice.
+    /** 
+     * Initializes the privacy consent overlay logic. 
      */
     async function initPrivacyConsent() {
-      if (!consentOverlay || !consentAccept || !consentDecline) {
-        return;
-      }
-
-      if (!getCalendarConsent()) {
-        consentOverlay.classList.remove("hidden");
-      } else {
-        consentOverlay.classList.add("hidden");
-      }
+      if (!consentOverlay) return;
+      if (!getCalendarConsent()) consentOverlay.classList.remove("hidden");
+      else consentOverlay.classList.add("hidden");
 
       consentAccept.addEventListener("click", () => {
         setCalendarConsent(true);
         consentOverlay.classList.add("hidden");
       });
-
       consentDecline.addEventListener("click", () => {
         setCalendarConsent(false);
-        if (root && root.host) {
-          root.host.style.display = "none";
-        }
+        if (root && root.host) root.host.style.display = "none";
         sendMessageToMainWindow("CLOSE_CHAT_PANEL");
       });
     }
 
-    // Set initial timestamp in the UI header
+    // Speech recognition state
+    let recognition = null;
+    let isRecording = false;
+    let finalTranscript = "";
+
     if (initialTimeEl) {
+      updateMicrophoneState();
       initialTimeEl.textContent = new Date().toLocaleTimeString();
     }
-  
 
-    /**
-     * Sends a custom message from this script to the top-level window.
-     * Used to communicate with other parts of the extension.
-     *
-     * @param {string} type - The message type identifier.
-     */
     function sendMessageToMainWindow(type) {
       window.top.postMessage({ type }, "*");
     }
 
-    /**
-     * Saves messages to storage via content script.
-     * Delegates the actual Chrome storage API call to the background script.
-     *
-     * @param {Array} messages
-     */
     async function saveMessages(messages) {
       window.postMessage({ type: "SAVE_MESSAGES", payload: messages }, "*");
     }
 
-    /**
-     * Loads previously saved messages from storage.
-     * Wraps the async message passing in a Promise.
-     *
-     * @returns {Promise<Array>}
+    /** 
+     * Loads chat history via message passing with the host. 
      */
     async function loadMessages() {
       return new Promise((resolve) => {
@@ -190,25 +344,19 @@
       });
     }
 
-    const WELCOME_MESSAGE =
-      "Hello! I'm your Google Calendar assistant. How can I help you today?";
+    const WELCOME_MESSAGE = "Hello! I'm your Google Calendar assistant. How can I help you today?";
 
-    /**
-     * Loads saved conversation and populates the chat.
-     * If none exists, shows the welcome message.
+    /** 
+     * Restores chat state and previous messages on load. 
      */
     async function initializeChat() {
       const messages = await loadMessages();
-
-      // Ensure we don't render empty message objects
       const filteredMessages = messages?.filter((msg) => msg.text) || [];
 
       if (filteredMessages.length > 0) {
-        // Clear existing messages first
         const existingMessages = chatMessages.querySelectorAll(".message");
         existingMessages.forEach((msg) => msg.remove());
 
-        // Append all stored messages with their original timestamps
         for (const msg of filteredMessages) {
           await appendMessage(msg.sender, msg.text, {
             skipSave: true,
@@ -216,27 +364,40 @@
           });
         }
       } else {
-        // Show initial welcome message if history is empty
         await appendMessage("ai", WELCOME_MESSAGE, {
           skipSave: false,
           timestamp: new Date().toISOString(),
         });
       }
+
+      // Restore rescheduling session if it was active
+      const wasReschedulingActive = getReschedulingMode();
+      const savedShadowId = getShadowCalendarId();
+
+      if (wasReschedulingActive) {
+        smartReschedulingMode = true;
+        if (savedShadowId) {
+          shadowCalendarId = savedShadowId;
+          currentShadowCalendarId = savedShadowId;
+
+          // Re-attach buttons to the last AI message
+          const aiMessages = chatMessages.querySelectorAll(".message.ai");
+          if (aiMessages.length > 0) {
+            const lastAi = aiMessages[aiMessages.length - 1];
+            const lastBubble = lastAi.querySelector(".message-bubble");
+            attachInlineRescheduleButtonsForBubble(lastBubble);
+          }
+        }
+        if (suggestionTag) suggestionTag.style.display = "flex";
+      }
     }
 
-    /**
-     * Formats conversation history for Gemini API.
-     * Translates local message format to the specific structure required by the backend LLM.
-     *
-     * @returns {Array} Formatted history array.
+    /** 
+     * Formats history for the Gemini API.
      */
     async function getConversationHistory() {
       const messages = await loadMessages();
-      if (!messages || messages.length === 0) {
-        return [];
-      }
-
-      // Remove welcome message from prompt to avoid confusing the AI context
+      if (!messages || messages.length === 0) return [];
       return messages
         .filter((msg) => msg.text !== WELCOME_MESSAGE)
         .map((msg) => ({
@@ -246,30 +407,20 @@
     }
 
     /**
-     * Appends a message to the chat interface.
-     *
-     * @param {string} sender - The sender of the message (user or assistant).
-     * @param {string} text - The message content.
-     * @param {object} [options] - Additional options.
+     * Appends a message bubble to the chat UI.
+     * 
+     * @param {string} sender - 'user' or 'ai'.
+     * @param {string} text - Message content.
+     * @param {Object} options - Config like {pulse, skipSave, timestamp}.
      */
     async function appendMessage(sender, text, options = {}) {
-      if (!chatMessages) {
-        return;
-      }
-
-      // Create message container
+      if (!chatMessages) return;
       const msg = document.createElement("div");
       msg.classList.add("message", sender);
-
-      // Create avatar element
       const avatar = document.createElement("div");
       avatar.classList.add("avatar", sender);
-
-      // Create content wrapper
       const content = document.createElement("div");
       content.classList.add("message-content");
-
-      // Create the text bubble
       const bubble = document.createElement("div");
       bubble.classList.add("message-bubble");
 
@@ -281,25 +432,17 @@
         bubble.textContent = text;
       }
 
-      // Add timestamp
       const time = document.createElement("div");
       time.classList.add("message-time");
       const timestamp = options.timestamp || new Date().toISOString();
-      const timeObj = new Date(timestamp);
-      time.textContent = timeObj.toLocaleTimeString();
+      time.textContent = new Date(timestamp).toLocaleTimeString();
 
-      // Assemble DOM elements
       content.append(bubble, time);
       msg.append(avatar, content);
       chatMessages.appendChild(msg);
 
-      // Auto-scroll to the newest message
-      chatMessages.scrollTo({
-        top: chatMessages.scrollHeight,
-        behavior: "smooth",
-      });
+      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: "smooth" });
 
-      // Save to session storage unless explicitly skipped
       if (!options.skipSave && text.trim() !== "") {
         const existing = (await loadMessages()) || [];
         existing.push({ sender, text, timestamp: timestamp });
@@ -307,10 +450,7 @@
       }
     }
 
-    // Handle chat form submission when user sends message
     if (chatForm && chatInput && chatMessages) {
-
-      // Allow to send message when pressing Enter (without Shift)
       chatInput.addEventListener("keydown", (e) => {
         if (e.key == "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -319,103 +459,88 @@
           );
         }
       });
-      
+
       chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-
-        // Get and validate input
         const msg = chatInput.value.trim();
         if (!msg) return;
-
-        // Check for calendar consent
         if (!getCalendarConsent()) {
-          if (consentOverlay) {
-            consentOverlay.classList.remove("hidden");
-          }
+          if (consentOverlay) consentOverlay.classList.remove("hidden");
           return;
         }
 
-        // Display user message
         appendMessage("user", msg);
         chatInput.value = "";
-
-        // Prepare AI context (history)
         const history = await getConversationHistory();
-
-        // Show loading indicator
         appendMessage("ai", "", { pulse: true });
 
         try {
-          // Request access token from background script
+          // Authentication Check
           const gcaTokenResp = await requestGcaAccessToken();
-
-          // Handle unauthenticated state
           if (gcaTokenResp.status === "need_auth") {
-            // If user needs to authenticate, inform them in the chat and start auth flow
-            const lastAiBubble = chatMessages.querySelector(
-              ".message.ai .message-bubble.pulse"
-            );
-            if (lastAiBubble) {
-              lastAiBubble.classList.remove("pulse");
-              lastAiBubble.textContent =
-                "Please connect your Google account to use the Calendar Assistant.";
-              lastAiBubble.style.color = "inherit";
-            } else {
-              await appendMessage(
-                "ai",
-                "Please connect your Google account to use the Calendar Assistant."
-              );
-            }
-
             startGoogleAuthFlow();
             return;
           }
-
-          // Handle authenitication errors
-          if (gcaTokenResp.status !== "success") {
-            console.error("Could not obtain access token:", gcaTokenResp);
-            const lastAiBubble = chatMessages.querySelector(
-              ".message.ai .message-bubble.pulse"
-            );
-            if (lastAiBubble) {
-              lastAiBubble.classList.remove("pulse");
-              lastAiBubble.textContent =
-                "Something went wrong with Google authentication. Please try again.";
-              lastAiBubble.style.color = "inherit";
-            } else {
-              await appendMessage(
-                "ai",
-                "Something went wrong with Google authentication. Please try again."
-              );
-            }
-            return;
-          }
+          if (gcaTokenResp.status !== "success") throw new Error("Auth failed");
 
           const gcaAccessToken = gcaTokenResp.access_token;
 
-          // Send user response to the assistant backend
+          // Context Injection: Inform backend if smart mode is active
+          let backendInput = msg;
+          if (smartReschedulingMode) {
+            backendInput = `[Smart Reschedule Mode Active] ${msg}`;
+          }
+
+          const requestBody = {
+            input: backendInput,
+            history: history,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          };
+
+          if (currentShadowCalendarId) {
+            requestBody.shadowCalendarId = currentShadowCalendarId;
+          }
+
           const response = await fetch(API_URL + "/api/gemini", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${gcaAccessToken}`,
             },
-            body: JSON.stringify({
-              input: msg,
-              history: history,
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            }),
+            body: JSON.stringify(requestBody),
           });
 
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
+          if (!response.ok) throw new Error(`Server error: ${response.status}`);
+          const data = await response.json();
+
+          let shouldTriggerRefresh = false;
+
+          // Check if backend initiated a new shadow session
+          if (data.action === "init_shadow_session") {
+            const shadowId =
+              data.shadowCalendarId || data.calendarResult?.shadowCalendarId;
+            if (shadowId && shadowId !== currentShadowCalendarId) {
+              currentShadowCalendarId = shadowId;
+              shadowCalendarId = shadowId;
+              setShadowCalendarId(shadowId);
+              shouldTriggerRefresh = true;
+            }
           }
 
-          // Process API Response
-          const data = await response.json();
+          if (shouldTriggerRefresh) {
+            console.log("New shadow session detected. Refreshing view.");
+            window.postMessage(
+              {
+                type: "GCA_CALENDAR_CREATED",
+                payload: { shadowCalendarId: currentShadowCalendarId },
+              },
+              "*"
+            );
+          }
+
           const aiMessage = data.output || data.text || "(No response)";
 
-          // Replace pulsing bubble with final assistant text response
+          // Update UI with AI response
           const lastAiBubble = chatMessages.querySelector(
             ".message.ai .message-bubble.pulse"
           );
@@ -423,6 +548,21 @@
             lastAiBubble.classList.remove("pulse");
             lastAiBubble.textContent = aiMessage;
             lastAiBubble.style.color = "inherit";
+
+            // If in mode and calendar was modified, attach action buttons
+            const isModification = [
+              "update",
+              "create",
+              "delete",
+              "init_shadow_session",
+            ].includes(data.action);
+
+            if (smartReschedulingMode && isModification) {
+              disableAllPreviousButtons();
+              if (shadowCalendarId) {
+                attachInlineRescheduleButtonsForBubble(lastAiBubble);
+              }
+            }
 
             const existing = (await loadMessages()) || [];
             existing.push({
@@ -435,22 +575,19 @@
             appendMessage("ai", aiMessage);
           }
         } catch (error) {
+          console.error(error);
           const lastAiBubble = chatMessages.querySelector(
             ".message.ai .message-bubble.pulse"
           );
           if (lastAiBubble) {
             lastAiBubble.classList.remove("pulse");
-            lastAiBubble.textContent =
-              "Something went wrong. Please try again.";
+            lastAiBubble.textContent = "Something went wrong. Please try again.";
             lastAiBubble.style.color = "inherit";
-          } else {
-            appendMessage("ai", "Something went wrong. Please try again.");
           }
         }
       });
     }
 
-    // Hides chat panel and notifies main window
     if (closeChatButton) {
       closeChatButton.addEventListener("click", (e) => {
         e.preventDefault();
@@ -459,23 +596,27 @@
       });
     }
 
-    // Clears chat history from UI and Storage
     if (clearChatButton) {
       clearChatButton.addEventListener("click", async (e) => {
         e.preventDefault();
 
-        // Clear all messages from DOM
-        chatMessages.querySelectorAll(".message").forEach((msg, i) => {
-          msg.remove();
-        });
+        // Ensure backend cleans up shadow session before clearing UI
+        if (shadowCalendarId) {
+          await exitReschedulingMode();
+        }
 
-        // Clear storage completely
+        chatMessages.querySelectorAll(".message").forEach((msg) => msg.remove());
         await saveMessages([]);
-
-        // Also send explicit clear message to ensure storage is wiped in background
         window.postMessage({ type: "CLEAR_MESSAGES" }, "*");
 
-        // Re-add welcome message to reset state
+        smartReschedulingMode = false;
+        shadowCalendarId = null;
+        currentShadowCalendarId = null;
+        setReschedulingMode(false);
+        setShadowCalendarId(null);
+        if (suggestionTag) suggestionTag.style.display = "none";
+        disableAllPreviousButtons();
+
         await appendMessage("ai", WELCOME_MESSAGE, {
           skipSave: true,
           timestamp: new Date().toISOString(),
@@ -483,7 +624,6 @@
       });
     }
 
-    // Toggle panel size
     if (resizeChatButton) {
       resizeChatButton.addEventListener("click", (e) => {
         e.preventDefault();
@@ -491,71 +631,221 @@
       });
     }
 
-    // Toggle secondary mode dropdown
     if (modeBtn && dropdown) {
       modeBtn.addEventListener("click", () => {
         dropdownMenu.style.display =
           dropdownMenu.style.display === "block" ? "none" : "block";
       });
-
-      // Close dropdown when clicking outside
       root.addEventListener("click", (e) => {
         if (!document.getElementById("mode-dropdown").contains(e.target)) {
           dropdownMenu.style.display = "none";
         }
       });
 
-      // Display suggestion instrument tag
-      smartSuggestionBtn.addEventListener("click", () => {
+      smartSuggestionBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         suggestionTag.style.display = "flex";
         dropdownMenu.style.display = "none";
+        smartReschedulingMode = true;
+        setReschedulingMode(true);
+        console.log("Smart rescheduling mode ON");
       });
 
-      // Remove suggestion instrument tag
       removeSuggestion.addEventListener("click", () => {
         suggestionTag.style.display = "none";
+        smartReschedulingMode = false;
+        disableAllPreviousButtons();
+        exitReschedulingMode(false);
       });
     }
 
-    // Initialize privacy calendar consent modal
-    initPrivacyConsent();
+    /**
+     * Initializes SpeechRecognition if supported by the browser.
+     */
+    function initializeSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    // Boot up the chat (load history or welcome message)
-    initializeChat();
+      // Check browser support
+      if (!SpeechRecognition) {
+        console.warn("Web Speech API is not supported in this browser.");
+        recognition = null;
 
-    // Add event containment logic for the shadow root to prevent event leakage.
-    // This stops events inside the chat from bubbling up to the host page (Google Calendar).
-    if (root instanceof ShadowRoot) {
-      const containmentEvents = [
-        "keydown",
-        "keyup",
-        "input",
-        "mousedown",
-        "mouseup",
-      ];
+        if (microphoneButton) {
+          microphoneButton.disabled = true;
+          microphoneButton.classList.add("hidden");
+        }
+        if (microphoneTooltip) {
+          microphoneTooltip.textContent = "Voice input not supported";
+        }
 
-      // Stop propagation for these events outside of the shadow DOM
-      containmentEvents.forEach((eventType) => {
-        root.addEventListener(
-          eventType,
-          (e) => {
-            if (!root.contains(e.target)) e.stopPropagation();
-          },
-          true
-        );
+        updateMicrophoneState();
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.interimResults = true; // Show text as user speaks
+      recognition.continuous = true; // Keep recording until stopped
+
+      recognition.addEventListener("result", handleSpeechResult);
+      recognition.addEventListener("error", handleSpeechError);
+      recognition.addEventListener("end", handleSpeechEnd);
+
+      updateMicrophoneState();
+    }
+
+    /**
+     * Processes speech results, separating final and interim transcripts.
+     */
+    function handleSpeechResult(event) {
+      let interimTranscript = "";
+      finalTranscript = "";
+
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = result[0].transcript;
+
+        if (result.isFinal) {
+          finalTranscript += text + " ";
+        } else {
+          interimTranscript += text + " ";
+        }
+      }
+
+      // Display live transcript in the input field
+      if (chatInput) {
+        chatInput.value = (finalTranscript || interimTranscript).trim();
+      }
+      updateMicrophoneState();
+    }
+
+    /** 
+     * Log errors and update state.
+     */
+    function handleSpeechError(event) {
+      console.error("Speech recognition error:", event.error);
+      isRecording = false;
+      updateMicrophoneState();
+    }
+
+    /** 
+     * Handles the end of a speech session (or restarts if continuous). 
+     */
+    function handleSpeechEnd() {
+      if (isRecording && recognition) {
+        try {
+          recognition.start();
+        } catch (err) {
+          console.warn("Could not restart recognition:", err);
+          isRecording = false;
+        }
+        updateMicrophoneState();
+        return;
+      }
+
+      const text = (finalTranscript || (chatInput ? chatInput.value : "")).trim();
+      if (!text) {
+        finalTranscript = "";
+        updateMicrophoneState();
+        return;
+      }
+
+      if (chatInput) {
+        chatInput.value = text;
+      }
+
+      finalTranscript = "";
+      updateMicrophoneState();
+    }
+
+    /**
+     * Toggles microphone button visibility and styling based on state.
+     */
+    function updateMicrophoneState() {
+      if (!microphoneButton) return;
+
+      const speechSupported = !!recognition;
+      const hasText = chatInput && chatInput.value.trim().length > 0;
+
+      // Only show mic if supported
+      const shouldHide = !speechSupported || (hasText && !isRecording);
+
+      microphoneButton.disabled = shouldHide;
+      microphoneButton.classList.toggle("hidden", shouldHide);
+
+      microphoneButton.classList.toggle(
+        "recording",
+        speechSupported && isRecording && !shouldHide
+      );
+
+      if (microphoneTooltip) {
+        if (!speechSupported) {
+          microphoneTooltip.textContent = "Voice input not supported";
+        } else if (isRecording) {
+          microphoneTooltip.textContent = "Stop recording";
+        } else if (hasText) {
+          microphoneTooltip.textContent = "Clear text to use microphone";
+        } else {
+          microphoneTooltip.textContent = "Start voice message";
+        }
+      }
+    }
+
+    if (microphoneButton) {
+      microphoneButton.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        if (!recognition) return;
+        if (microphoneButton.disabled) return;
+
+        if (isRecording) {
+          isRecording = false;
+          recognition.stop();
+        } else {
+          isRecording = true;
+          finalTranscript = "";
+          recognition.start();
+        }
+
+        updateMicrophoneState();
       });
+    }
 
-      // Prevent keyboard events in chat input from affecting the parent page
-      const keyboardEvents = ["keydown", "keypress", "keyup"];
+    if (chatInput) {
+      chatInput.addEventListener("input", () => {
+        updateMicrophoneState();
+      });
+    }
 
-      keyboardEvents.forEach((type) => {
+    initializeSpeechRecognition();
+    initPrivacyConsent();
+    initializeChat();
+    updateMicrophoneState();
+
+    // Prevent chat interactions from bubbling up and affecting the host page
+    if (root instanceof ShadowRoot) {
+      ["keydown", "keyup", "input", "mousedown", "mouseup"].forEach(
+        (eventType) => {
+          root.addEventListener(
+            eventType,
+            (e) => {
+              if (!root.contains(e.target)) e.stopPropagation();
+            },
+            true
+          );
+        }
+      );
+      ["keydown", "keypress", "keyup"].forEach((type) => {
         root.addEventListener(
           type,
           (e) => {
             const active = root.activeElement || document.activeElement;
-            
-            if (chatInput &&(active === chatInput || chatInput.contains(e.target))) {
-              if(e.key=="Enter") return;
+            if (
+              chatInput &&
+              (active === chatInput || chatInput.contains(e.target))
+            ) {
+              if (e.key == "Enter") return;
               e.stopPropagation();
               e.stopImmediatePropagation();
             }
@@ -563,9 +853,6 @@
           true
         );
       });
-    } else {
-      // If no shadow root found, skip containment setup
-      console.info("Skipping event containment because no shadow root was found.");
     }
   }
 })();
